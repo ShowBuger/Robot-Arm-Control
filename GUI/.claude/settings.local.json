@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(powershell -Command \"Get-ChildItem ''E:\\程序\\force_visual_XARM版本\\logs'' | Sort-Object LastWriteTime -Descending | Select-Object -First 3 Name\")",
+      "Bash(test:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(python:*)",
+      "Bash(Select-Object -First 100)",
+      "Bash(Start-Sleep -Seconds 3)",
+      "Bash(timeout 5 python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,0 +1,2 @@
+.
+-DCATKIN_DEVEL_PREFIX=/home/cindy/gripper_12_12/devel -DCMAKE_INSTALL_PREFIX=/home/cindy/gripper_12_12/install -G Unix Makefiles

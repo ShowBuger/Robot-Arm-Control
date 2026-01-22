@@ -1,0 +1,6 @@
+PyQt6>=6.5.0
+pyserial>=3.5
+pyinstaller>=6.0.0
+xarm-python-sdk>=1.11.0
+pyyaml>=6.0
+numpy>=1.21.0 

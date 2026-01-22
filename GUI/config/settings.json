@@ -1,0 +1,50 @@
+{
+    "theme": "dracula",
+    "serial": {
+        "baud_rate": 115200,
+        "data_bits": 8,
+        "parity": "N",
+        "stop_bits": 1,
+        "flow_control": null,
+        "last_port": "COM25",
+        "auto_connect": true,
+        "reconnect_attempts": 3
+    },
+    "display": {
+        "text_font": "Consolas",
+        "text_size": 10,
+        "show_timestamp": false,
+        "hex_display": false,
+        "auto_scroll": true,
+        "max_lines": 1000
+    },
+    "logging": {
+        "enabled": false,
+        "log_dir": "D:/HuaweiMoveData/Users/Caibinbin/Desktop/data",
+        "log_format": "csv",
+        "auto_filename": true,
+        "include_timestamp": true
+    },
+    "adaptive_grasp": {
+        "finger_indices": [
+            0,
+            1,
+            2,
+            3,
+            4
+        ],
+        "close_step": 10,
+        "release_step": 10,
+        "close_speed": 1000,
+        "step_interval": 0.5,
+        "force_threshold_x": 2.0,
+        "force_threshold_y": 2.0,
+        "force_threshold_z": 2.0,
+        "stable_duration": 2.0,
+        "stable_std_threshold": 0.1,
+        "sample_window": 20,
+        "max_iterations": 100,
+        "release_mode": false,
+        "initial_action": "\u65e0 (\u4e0d\u6267\u884c\u521d\u59cb\u52a8\u4f5c)"
+    }
+}

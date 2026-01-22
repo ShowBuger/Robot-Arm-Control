@@ -1,0 +1,52 @@
+{
+  "hand_control": {
+    "joint_enables": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false
+    ],
+    "speeds": [
+      104,
+      200,
+      200,
+      200,
+      200,
+      200
+    ],
+    "steps": [
+      5,
+      5,
+      5,
+      5,
+      5,
+      5
+    ],
+    "min_values": [
+      500,
+      500,
+      500,
+      850,
+      850,
+      200
+    ]
+  },
+  "sensor_thresholds": {
+    "z_threshold": 2.0,
+    "threshold_step": 0.1,
+    "lift_change_threshold": 1.0,
+    "lift_variance_threshold": 1.0,
+    "lift_window_size": 20,
+    "enable_lift_monitoring": true
+  },
+  "arm_control": {
+    "lift_height": 10.0,
+    "arm_speed": 20,
+    "control_period": 2.0,
+    "max_iterations": 10
+  },
+  "selected_sensors": [],
+  "version": "1.2"
+}

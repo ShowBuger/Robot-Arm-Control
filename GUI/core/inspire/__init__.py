@@ -1,0 +1,1 @@
+from .controller.control import InspireController

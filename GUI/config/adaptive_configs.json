@@ -1,0 +1,92 @@
+{
+  "薯片": {
+    "type": "adaptive_grasp",
+    "sensor_ids": [
+      3
+    ],
+    "initial_action": "薯片准备",
+    "finger_indices": [
+      3,
+      4
+    ],
+    "close_step": 10,
+    "close_speed": 100,
+    "step_interval": 0.5,
+    "force_threshold_x": 0.3,
+    "force_threshold_y": 0.3,
+    "force_threshold_z": 0.2,
+    "stable_duration": 2.0,
+    "stable_std_threshold": 0.1,
+    "sample_window": 20,
+    "max_iterations": 10
+  },
+  "躲避测试": {
+    "type": "adaptive_grasp",
+    "sensor_ids": [
+      3
+    ],
+    "initial_action": "躲避",
+    "finger_indices": [
+      3,
+      4
+    ],
+    "close_step": 5,
+    "release_step": 15,
+    "close_speed": 100,
+    "step_interval": 0.2,
+    "force_threshold_x": 2.0,
+    "force_threshold_y": 2.0,
+    "force_threshold_z": 0.07,
+    "stable_duration": 2.0,
+    "stable_std_threshold": 0.1,
+    "sample_window": 20,
+    "max_iterations": 100,
+    "release_mode": true
+  },
+  "抓取大": {
+    "type": "adaptive_grasp",
+    "sensor_ids": [
+      3
+    ],
+    "initial_action": "抓取大",
+    "finger_indices": [
+      3,
+      4
+    ],
+    "close_step": 15,
+    "release_step": 15,
+    "close_speed": 100,
+    "step_interval": 0.2,
+    "force_threshold_x": 2.0,
+    "force_threshold_y": 2.0,
+    "force_threshold_z": 0.3,
+    "stable_duration": 2.0,
+    "stable_std_threshold": 0.1,
+    "sample_window": 20,
+    "max_iterations": 30,
+    "release_mode": false
+  },
+  "抓取小": {
+    "type": "adaptive_grasp",
+    "sensor_ids": [
+      3
+    ],
+    "initial_action": "海苔准备",
+    "finger_indices": [
+      3,
+      4
+    ],
+    "close_step": 5,
+    "release_step": 15,
+    "close_speed": 100,
+    "step_interval": 0.2,
+    "force_threshold_x": 2.0,
+    "force_threshold_y": 2.0,
+    "force_threshold_z": 0.1,
+    "stable_duration": 2.0,
+    "stable_std_threshold": 0.1,
+    "sample_window": 20,
+    "max_iterations": 30,
+    "release_mode": false
+  }
+}

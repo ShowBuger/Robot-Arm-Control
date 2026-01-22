@@ -1,0 +1,29 @@
+[project]
+name = "inspire_control"
+version = "0.2.2"
+description = "Inspire灵巧手 Python控制接口"
+authors = [
+    { name = "Jiaqi Wang", email = "jiaqi_wan@outlook.com" }
+]
+dependencies = [
+    "pyserial",
+    "numpy>=1.23.0"
+]
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
+]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = { find = { where = ["."] } }
+include-package-data = true  # 确保包含非 Python 文件
+
+# 暂时用include-package-data = true全局配置
+# [tool.setuptools.package-data] 
+# inspire = ["config/*.yml"]

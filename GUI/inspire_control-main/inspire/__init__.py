@@ -1,0 +1,1 @@
+from inspire.controller import control

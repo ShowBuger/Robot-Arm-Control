@@ -1,0 +1,10 @@
+hand_dof: 6
+port: /dev/ttyUSB0
+baudrate: 115200
+
+initial_angle: [0, 0, 0, 0, 500, 1000]
+binary_open: [1000, 1000, 1000, 1000, 1000, -1] # little ring middle index thumb thumb_flip
+binary_close: [400, 400, 400, 400, 700, -1]
+
+radian_to_cylinder_ratio: [0.08, 0.08, 0.08, 0.08, -0.04, 0.08]
+radian_to_cylinder_offset: [90, 90, 90, 90, 170, 85]
