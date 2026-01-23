@@ -1,0 +1,221 @@
+# Claude Code settings
+.claude/settings.local.json
+
+# ========================================
+# Python
+# ========================================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# ========================================
+# IDE / Editor
+# ========================================
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.swp
+.*.swo
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# ========================================
+# 操作系统
+# ========================================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# ========================================
+# 项目特定文件
+# ========================================
+
+# 日志文件
+GUI/logs/
+*.log
+
+# 数据文件（CSV等实验数据）
+GUI/data/
+GUI/data/**/*.csv
+GUI/data/**/*.xlsx
+GUI/data/**/*.txt
+
+# 配置文件（可能包含敏感信息）
+GUI/config/connection_config.json
+GUI/config/user_settings.json
+
+# 保留配置模板，但忽略实际配置
+# GUI/config/*.json
+
+# 保存的动作序列（用户生成的）
+GUI/saved_actions/
+saved_actions/
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+*.swp
+
+# DLL和库文件（运行时复制）
+GUI/libs/*.dll
+GUI/libs/*.so
+GUI/libs/*.dylib
+
+# ========================================
+# 文档和SDK（体积大，不应提交到git）
+# ========================================
+# 瑞尔曼SDK文档和库文件（如果很大的话）
+Document/瑞尔曼/RM_API2/**/*.dll
+Document/瑞尔曼/RM_API2/**/*.so
+Document/瑞尔曼/RM_API2/**/*.dylib
+Document/瑞尔曼/RM_API2/**/*.lib
+Document/瑞尔曼/RM_API2/**/*.pdb
+Document/瑞尔曼/RM_API2/**/*.ilk
+Document/瑞尔曼/RM_API2/.git/
+
+# 其他大型文档资源
+Document/**/*.pdf
+Document/**/*.zip
+Document/**/*.rar
+Document/**/*.7z
+
+# ========================================
+# 测试和调试
+# ========================================
+# 测试输出
+test_output/
+test_results/
+
+# 性能分析
+*.prof
+*.lprof
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# ========================================
+# 其他
+# ========================================
+# 打包后的可执行文件
+*.exe
+*.app
+*.dmg
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 备份文件
+*_backup
+*_old
+*.backup
+nul

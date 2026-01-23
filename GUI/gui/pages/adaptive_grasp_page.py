@@ -540,7 +540,7 @@ class AdaptiveGraspPage(QWidget):
             return
 
         # 检查机械手是否连接 - 更加健壮地检查多个可能的控制器引用
-        # 候选控制器：main_window.arm_controller, self.controller.arm_controller, xarm_inspire_page.controller
+        # 候选控制器：main_window.arm_controller, self.controller.arm_controller, rm_inspire_page.controller
         candidates = []
         main_ctrl = getattr(self.main_window, 'arm_controller', None)
         if main_ctrl is not None:
@@ -597,7 +597,7 @@ class AdaptiveGraspPage(QWidget):
                 print("DEBUG:", m)
 
         if not hand_available:
-            QMessageBox.warning(self, "错误", "请先在xArm机械臂页面连接机械手")
+            QMessageBox.warning(self, "错误", "请先在瑞尔曼机械臂页面连接机械手")
             return
 
         # 获取选中的传感器

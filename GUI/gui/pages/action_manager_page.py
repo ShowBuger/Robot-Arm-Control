@@ -20,7 +20,7 @@ import csv
 import os
 
 from core.action_manager import Action, ActionSequence
-from core.xarm_inspire_controller import XArmInspireController
+from core.arm_controller import ArmController
 
 
 class ActionDialog(QDialog):
@@ -631,7 +631,7 @@ class ActionManagerPage(QWidget):
         if hasattr(parent, 'arm_controller') and parent.arm_controller is not None:
             self.integrated_controller = parent.arm_controller
         else:
-            self.integrated_controller = XArmInspireController()
+            self.integrated_controller = ArmController()
 
         # 让动作管理器使用集成控制器（如果提供了动作管理器的话）
         if self.action_manager:
@@ -838,14 +838,14 @@ class ActionManagerPage(QWidget):
         connection_group = QGroupBox("设备连接")
         connection_layout = QGridLayout(connection_group)
         
-        # xArm连接
-        connection_layout.addWidget(QLabel("xArm IP:"), 0, 0)
+        # 瑞尔曼连接
+        connection_layout.addWidget(QLabel("瑞尔曼IP:"), 0, 0)
         self.arm_ip_input = QComboBox()
         self.arm_ip_input.setEditable(True)
-        self.arm_ip_input.addItems(["192.168.1.215", "192.168.1.100", "127.0.0.1"])
+        self.arm_ip_input.addItems(["192.168.1.18", "192.168.1.100", "127.0.0.1"])
         connection_layout.addWidget(self.arm_ip_input, 0, 1)
         
-        self.arm_connect_btn = QPushButton("连接xArm")
+        self.arm_connect_btn = QPushButton("连接瑞尔曼")
         self.arm_connect_btn.clicked.connect(self.connect_arm)
         connection_layout.addWidget(self.arm_connect_btn, 0, 2)
         
@@ -887,8 +887,8 @@ class ActionManagerPage(QWidget):
         controls_container_layout = QHBoxLayout(controls_container)
         controls_container_layout.setContentsMargins(0, 0, 0, 0)
         
-        # xArm控制
-        arm_group = QGroupBox("xArm机械臂")
+        # 瑞尔曼控制
+        arm_group = QGroupBox("瑞尔曼机械臂")
         arm_layout = QVBoxLayout(arm_group)
         
         # 创建机械臂参数配置
@@ -1129,7 +1129,7 @@ class ActionManagerPage(QWidget):
         
         # 连接状态
         status_row_layout = QHBoxLayout()
-        self.arm_status_label = QLabel("xArm: 未连接")
+        self.arm_status_label = QLabel("瑞尔曼: 未连接")
         self.hand_status_label = QLabel("Inspire: 未连接")
         status_row_layout.addWidget(self.arm_status_label)
         status_row_layout.addWidget(self.hand_status_label)
@@ -2099,7 +2099,7 @@ class ActionManagerPage(QWidget):
         #     return
         # ... 其余代码已注释
 
-    # 集成控制相关方法 - 使用XArmInspireController的原始方法
+    # 集成控制相关方法 - 使用ArmController的原始方法
     def refresh_serial_ports(self):
         """刷新可用串口列表"""
         import serial.tools.list_ports
@@ -2193,27 +2193,27 @@ class ActionManagerPage(QWidget):
         return ""
 
     def connect_arm(self):
-        """连接xArm机械臂 - 使用XArmInspireController"""
+        """连接瑞尔曼机械臂 - 使用ArmController"""
         ip = self.arm_ip_input.currentText()
         self.arm_connect_btn.setEnabled(False)
-        self.log_message(f"正在连接xArm: {ip}...")
+        self.log_message(f"正在连接瑞尔曼: {ip}...")
         
         import threading
         def connect_thread():
             try:
                 if self.integrated_controller.connect_arm(ip):
-                    self.log_message(f"xArm连接成功: {ip}")
-                    self.arm_status_label.setText(f"xArm: 已连接 ({ip})")
+                    self.log_message(f"瑞尔曼连接成功: {ip}")
+                    self.arm_status_label.setText(f"瑞尔曼: 已连接 ({ip})")
                     # 更新按钮状态
-                    self.arm_connect_btn.setText("断开xArm")
+                    self.arm_connect_btn.setText("断开瑞尔曼")
                     self.arm_connect_btn.clicked.disconnect()
                     self.arm_connect_btn.clicked.connect(self.disconnect_arm)
                 else:
-                    self.log_message(f"xArm连接失败: {ip}")
-                    self.arm_status_label.setText("xArm: 连接失败")
+                    self.log_message(f"瑞尔曼连接失败: {ip}")
+                    self.arm_status_label.setText("瑞尔曼: 连接失败")
             except Exception as e:
-                self.log_message(f"xArm连接异常: {str(e)}")
-                self.arm_status_label.setText("xArm: 连接异常")
+                self.log_message(f"瑞尔曼连接异常: {str(e)}")
+                self.arm_status_label.setText("瑞尔曼: 连接异常")
             finally:
                 self.arm_connect_btn.setEnabled(True)
         
@@ -2221,21 +2221,21 @@ class ActionManagerPage(QWidget):
         thread.start()
 
     def disconnect_arm(self):
-        """断开xArm连接"""
+        """断开瑞尔曼连接"""
         try:
             if self.integrated_controller.disconnect_arm():
-                self.log_message("xArm已断开连接")
-                self.arm_status_label.setText("xArm: 未连接")
-                self.arm_connect_btn.setText("连接xArm")
+                self.log_message("瑞尔曼已断开连接")
+                self.arm_status_label.setText("瑞尔曼: 未连接")
+                self.arm_connect_btn.setText("连接瑞尔曼")
                 self.arm_connect_btn.clicked.disconnect()
                 self.arm_connect_btn.clicked.connect(self.connect_arm)
             else:
-                self.log_message("xArm断开连接失败")
+                self.log_message("瑞尔曼断开连接失败")
         except Exception as e:
-            self.log_message(f"xArm断开连接异常: {str(e)}")
+            self.log_message(f"瑞尔曼断开连接异常: {str(e)}")
 
     def connect_hand(self):
-        """连接Inspire机械手 - 使用XArmInspireController"""
+        """连接Inspire机械手 - 使用ArmController"""
         port = self.get_selected_serial_port()
         if not port:
             self.log_message("请先选择一个串口")
@@ -2304,7 +2304,7 @@ class ActionManagerPage(QWidget):
             self.log_message(f"Inspire断开连接异常: {str(e)}")
 
     def connect_all(self):
-        """连接所有设备 - 使用XArmInspireController"""
+        """连接所有设备 - 使用ArmController"""
         ip = self.arm_ip_input.currentText()
         port = self.get_selected_serial_port()
         self.connect_all_btn.setEnabled(False)
@@ -2316,7 +2316,7 @@ class ActionManagerPage(QWidget):
                 if self.integrated_controller.connect_all(ip, port):
                     self.log_message("设备连接完成")
                     # 更新状态标签
-                    self.arm_status_label.setText(f"xArm: 已连接 ({ip})")
+                    self.arm_status_label.setText(f"瑞尔曼: 已连接 ({ip})")
                     self.hand_status_label.setText(f"Inspire: 已连接 ({port})")
                 else:
                     self.log_message("设备连接失败")
@@ -2329,7 +2329,7 @@ class ActionManagerPage(QWidget):
         thread.start()
 
     def disconnect_all(self):
-        """断开所有设备连接 - 使用XArmInspireController"""
+        """断开所有设备连接 - 使用ArmController"""
         self.disconnect_btn.setEnabled(False)
         self.log_message("正在断开所有连接...")
         
@@ -2339,7 +2339,7 @@ class ActionManagerPage(QWidget):
                 if self.integrated_controller.disconnect_all():
                     self.log_message("所有设备已断开连接")
                     # 更新状态标签
-                    self.arm_status_label.setText("xArm: 未连接")
+                    self.arm_status_label.setText("瑞尔曼: 未连接")
                     self.hand_status_label.setText("Inspire: 未连接")
                 else:
                     self.log_message("断开连接时出现错误")
@@ -2352,7 +2352,7 @@ class ActionManagerPage(QWidget):
         thread.start()
 
     def move_arm(self):
-        """移动机械臂 - 使用XArmInspireController"""
+        """移动机械臂 - 使用ArmController"""
         position = [
             self.arm_x.value(),
             self.arm_y.value(),
@@ -2368,7 +2368,7 @@ class ActionManagerPage(QWidget):
             self.log_message("机械臂移动失败")
 
     def set_hand_angles(self):
-        """设置手指角度 - 使用XArmInspireController"""
+        """设置手指角度 - 使用ArmController"""
         angles = [spin.value() for spin in self.hand_angles]
         if self.integrated_controller.set_hand_angles(angles):
             self.log_message(f"手指角度设置为: {angles}")
@@ -2376,7 +2376,7 @@ class ActionManagerPage(QWidget):
             self.log_message("手指角度设置失败")
 
     def open_hand(self):
-        """张开手爪 - 使用XArmInspireController"""
+        """张开手爪 - 使用ArmController"""
         if self.integrated_controller.open_hand():
             self.log_message("手爪已张开")
             # 更新UI显示
@@ -2388,7 +2388,7 @@ class ActionManagerPage(QWidget):
             self.log_message("张开手爪失败")
 
     def close_hand(self):
-        """闭合手爪 - 使用XArmInspireController"""
+        """闭合手爪 - 使用ArmController"""
         if self.integrated_controller.close_hand():
             self.log_message("手爪已闭合")
             # 更新UI显示
@@ -2571,9 +2571,9 @@ class ActionManagerPage(QWidget):
                     
                     # 更新连接状态显示
                     if status.get("arm_connected", False):
-                        self.arm_status_label.setText("xArm: 已连接")
+                        self.arm_status_label.setText("瑞尔曼: 已连接")
                     else:
-                        self.arm_status_label.setText("xArm: 未连接")
+                        self.arm_status_label.setText("瑞尔曼: 未连接")
                     
                     if status.get("hand_connected", False):
                         self.hand_status_label.setText("Inspire: 已连接")

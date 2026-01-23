@@ -142,9 +142,9 @@ class MainWindow(QMainWindow):
         # 初始化串口管理器
         self.serial_manager = SerialManager()
 
-        # 创建机械臂控制器 (使用XArmInspireController以支持机械手)
-        from core.xarm_inspire_controller import XArmInspireController
-        self.arm_controller = XArmInspireController()
+        # 创建机械臂控制器 (使用ArmController支持瑞尔曼机械臂和机械手)
+        from core.arm_controller import ArmController
+        self.arm_controller = ArmController()
 
         # 初始化动作管理器
         self.action_manager = ActionManager()
@@ -269,10 +269,10 @@ class MainWindow(QMainWindow):
 
 
     def show_xarm_inspire_page(self):
-        """显示xArm集成页面"""
+        """显示瑞尔曼集成页面"""
         self.pages.setCurrentWidget(self.xarm_inspire_page)
         self.left_menu.select_menu_button(self.left_menu.xarm_btn)
-        self.title_bar.title_label.setText("xArm集成")
+        self.title_bar.title_label.setText("瑞尔曼集成")
 
     def show_adaptive_grasp_page(self):
         """显示自适应抓取页面"""

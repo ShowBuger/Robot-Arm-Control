@@ -29,7 +29,7 @@ class HomePage(QWidget):
         self.main_layout.setSpacing(10)
 
         # 创建欢迎标题
-        self.title_label = QLabel("欢迎使用 ForceVisual XARM 版本")
+        self.title_label = QLabel("欢迎使用 ForceVisual 瑞尔曼版 版本")
         self.title_label.setObjectName("pageTitle")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.main_layout.addWidget(self.title_label)
@@ -55,7 +55,7 @@ class HomePage(QWidget):
                 self.logo_label.setPixmap(pixmap)
             else:
                 # 如果图标不存在，使用文本替代
-                self.logo_label.setText("ForceVisual XARM")
+                self.logo_label.setText("ForceVisual 瑞尔曼版")
                 self.logo_label.setStyleSheet("""
                     font-size: 36px;
                     font-weight: bold;
@@ -63,7 +63,7 @@ class HomePage(QWidget):
                 """)
         except:
             # 如果无法导入APP_ROOT_PATH，使用文本替代
-            self.logo_label.setText("ForceVisual XARM")
+            self.logo_label.setText("ForceVisual 瑞尔曼版")
             self.logo_label.setStyleSheet("""
                 font-size: 36px;
                 font-weight: bold;
@@ -74,7 +74,7 @@ class HomePage(QWidget):
 
         # 添加欢迎信息
         self.welcome_label = QLabel(
-            "ForceVisual XARM 是一个功能强大的三轴力传感器上位机系统，"
+            "ForceVisual 瑞尔曼版 是一个功能强大的三轴力传感器上位机系统，"
             "集成机械臂控制、机械手操作和实时数据可视化。"
         )
         self.welcome_label.setWordWrap(True)
@@ -90,7 +90,7 @@ class HomePage(QWidget):
         features = [
             "实时传感器监测 - 多传感器数据同步采集和可视化",
             "串口通信 - 灵活的串口配置和数据传输",
-            "机械臂控制 - 集成xArm机械臂SDK，支持精确位置和速度控制",
+            "机械臂控制 - 集成瑞尔曼机械臂SDK，支持精确位置和速度控制",
             "机械手操作 - 集成Inspire灵巧手，支持多自由度手指控制",
             "动作管理 - 动作序列录制、编辑和回放",
             "数据记录 - 完整的数据记录和导出功能",
@@ -108,7 +108,7 @@ class HomePage(QWidget):
         self.content_layout.addWidget(self.tech_title)
 
         tech_info = QLabel(
-            "基于 PyQt6 + xArm SDK + Inspire Controller + Matplotlib + pyqtgraph"
+            "基于 PyQt6 + 瑞尔曼 SDK + Inspire Controller + Matplotlib + pyqtgraph"
         )
         tech_info.setWordWrap(True)
         self.content_layout.addWidget(tech_info)

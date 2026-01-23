@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""xArm机械臂和Inspire机械手集成控制页面。"""
+"""瑞尔曼机械臂和Inspire机械手集成控制页面。"""
 
 import os
 import time
@@ -22,17 +22,17 @@ try:
 except ImportError:
     SERIAL_AVAILABLE = False
 
-from core.xarm_inspire_controller import XArmInspireController
+from core.arm_controller import ArmController
 
 
 class XArmInspirePage(QWidget):
-    """xArm机械臂和Inspire机械手集成控制页面。"""
+    """瑞尔曼机械臂和Inspire机械手集成控制页面。"""
 
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
         # 使用main_window的共享控制器,而不是创建新的
-        self.controller = main_window.arm_controller if hasattr(main_window, 'arm_controller') else XArmInspireController()
+        self.controller = main_window.arm_controller if hasattr(main_window, 'arm_controller') else ArmController()
         
         # 设置UI
         self.setup_ui()
@@ -56,7 +56,7 @@ class XArmInspirePage(QWidget):
         self.main_layout.setSpacing(10)
 
         # 创建标题
-        self.title_label = QLabel("xArm机械臂 & Inspire机械手 集成控制")
+        self.title_label = QLabel("瑞尔曼机械臂 & Inspire机械手 集成控制")
         self.title_label.setObjectName("pageTitle")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         font = QFont()
@@ -79,11 +79,11 @@ class XArmInspirePage(QWidget):
         group = QGroupBox("设备连接")
         layout = QGridLayout(group)
         
-        # xArm连接
-        layout.addWidget(QLabel("xArm IP:"), 0, 0)
+        # 瑞尔曼机械臂连接
+        layout.addWidget(QLabel("瑞尔曼IP:"), 0, 0)
         self.arm_ip_input = QComboBox()
         self.arm_ip_input.setEditable(True)
-        self.arm_ip_input.addItems(["192.168.1.215", "192.168.1.100", "127.0.0.1"])
+        self.arm_ip_input.addItems(["192.168.1.18", "192.168.1.100", "127.0.0.1"])
         layout.addWidget(self.arm_ip_input, 0, 1)
         
         # Inspire连接
@@ -128,8 +128,8 @@ class XArmInspirePage(QWidget):
         group = QGroupBox("设备控制")
         layout = QHBoxLayout(group)
         
-        # xArm控制
-        arm_group = QGroupBox("xArm机械臂")
+        # 瑞尔曼机械臂控制
+        arm_group = QGroupBox("瑞尔曼机械臂")
         arm_layout = QGridLayout(arm_group)
         
         # 位置控制
@@ -256,7 +256,7 @@ class XArmInspirePage(QWidget):
         
         # 连接状态
         status_layout = QHBoxLayout()
-        self.arm_status_label = QLabel("xArm: 未连接")
+        self.arm_status_label = QLabel("瑞尔曼: 未连接")
         self.hand_status_label = QLabel("Inspire: 未连接")
         status_layout.addWidget(self.arm_status_label)
         status_layout.addWidget(self.hand_status_label)
@@ -380,19 +380,19 @@ class XArmInspirePage(QWidget):
 
     # 连接控制方法
     def connect_arm(self):
-        """连接xArm机械臂。"""
+        """连接瑞尔曼机械臂。"""
         ip = self.arm_ip_input.currentText()
         self.arm_connect_btn.setEnabled(False)
-        self.log_message(f"正在连接xArm: {ip}...")
-        
+        self.log_message(f"正在连接瑞尔曼: {ip}...")
+
         def connect_thread():
             try:
                 if self.controller.connect_arm(ip):
-                    self.log_message(f"xArm连接成功: {ip}")
+                    self.log_message(f"瑞尔曼连接成功: {ip}")
                 else:
-                    self.log_message(f"xArm连接失败: {ip}")
+                    self.log_message(f"瑞尔曼连接失败: {ip}")
             except Exception as e:
-                self.log_message(f"xArm连接异常: {str(e)}")
+                self.log_message(f"瑞尔曼连接异常: {str(e)}")
             finally:
                 self.arm_connect_btn.setEnabled(True)
                 # 更新连接状态UI
@@ -689,10 +689,10 @@ class XArmInspirePage(QWidget):
             # 更新机械臂状态显示
             if arm_connected:
                 arm_ip = getattr(self.controller, 'arm_ip', self.arm_ip_input.currentText())
-                self.arm_status_label.setText(f"xArm: 已连接 ({arm_ip})")
+                self.arm_status_label.setText(f"瑞尔曼: 已连接 ({arm_ip})")
                 self.arm_status_label.setStyleSheet("color: green;")
             else:
-                self.arm_status_label.setText("xArm: 未连接")
+                self.arm_status_label.setText("瑞尔曼: 未连接")
                 self.arm_status_label.setStyleSheet("color: red;")
             
             # 更新机械手状态显示

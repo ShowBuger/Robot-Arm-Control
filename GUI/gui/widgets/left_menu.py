@@ -94,9 +94,9 @@ class LeftMenu(QWidget):
         self.adaptive_grasp_btn = self.create_menu_button("自适应", "adaptive")
         self.top_layout.addWidget(self.adaptive_grasp_btn)
 
-        # 添加xArm集成按钮（隐藏显示但保留功能）
-        self.xarm_btn = self.create_menu_button("xArm", "xarm")
-        self.xarm_btn.setVisible(False)  # 隐藏xArm集成按钮
+        # 添加瑞尔曼集成按钮（隐藏显示但保留功能）
+        self.xarm_btn = self.create_menu_button("瑞尔曼", "xarm")
+        self.xarm_btn.setVisible(False)  # 隐藏瑞尔曼集成按钮
         self.top_layout.addWidget(self.xarm_btn)
 
         # 添加一个spacer
