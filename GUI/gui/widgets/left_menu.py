@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
@@ -48,7 +49,20 @@ class LeftMenu(QWidget):
         self.app_icon.setMinimumHeight(50)
 
         # 尝试加载应用图标
-        icon_path = os.path.join(APP_ROOT_PATH, "resources", "images", "icon.png")
+        try:
+            icon_path = os.path.join(APP_ROOT_PATH, "resources", "images", "icon.png")
+        except NameError:
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                    "resources", "images", "icon.png")
+
+        # 在打包环境中，资源文件位于临时目录中
+        if getattr(sys, 'frozen', False):
+            # PyInstaller打包环境
+            if hasattr(sys, '_MEIPASS'):
+                icon_path = os.path.join(sys._MEIPASS, "resources", "images", "icon.png")
+            else:
+                # 备用方案：可执行文件所在目录
+                icon_path = os.path.join(os.path.dirname(sys.executable), "resources", "images", "icon.png")
         if os.path.exists(icon_path):
             pixmap = QPixmap(icon_path).scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio,
                                                Qt.TransformationMode.SmoothTransformation)
@@ -72,9 +86,6 @@ class LeftMenu(QWidget):
         self.top_layout.addWidget(self.separator)
 
         # 添加菜单按钮
-        self.home_btn = self.create_menu_button("主页", "home")
-        self.top_layout.addWidget(self.home_btn)
-
         self.serial_btn = self.create_menu_button("串口", "serial")
         self.top_layout.addWidget(self.serial_btn)
 
@@ -94,10 +105,6 @@ class LeftMenu(QWidget):
         self.adaptive_grasp_btn = self.create_menu_button("自适应", "adaptive")
         self.top_layout.addWidget(self.adaptive_grasp_btn)
 
-        # 添加瑞尔曼集成按钮（隐藏显示但保留功能）
-        self.xarm_btn = self.create_menu_button("瑞尔曼", "xarm")
-        self.xarm_btn.setVisible(False)  # 隐藏瑞尔曼集成按钮
-        self.top_layout.addWidget(self.xarm_btn)
 
         # 添加一个spacer
         self.top_layout.addItem(QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
@@ -126,7 +133,20 @@ class LeftMenu(QWidget):
         btn.setObjectName("menuButton")
 
         # 尝试加载图标
-        icon_path = os.path.join(APP_ROOT_PATH, "resources", "images", f"{icon_name}.png")
+        try:
+            icon_path = os.path.join(APP_ROOT_PATH, "resources", "images", f"{icon_name}.png")
+        except NameError:
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                    "resources", "images", f"{icon_name}.png")
+
+        # 在打包环境中，资源文件位于临时目录中
+        if getattr(sys, 'frozen', False):
+            # PyInstaller打包环境
+            if hasattr(sys, '_MEIPASS'):
+                icon_path = os.path.join(sys._MEIPASS, "resources", "images", f"{icon_name}.png")
+            else:
+                # 备用方案：可执行文件所在目录
+                icon_path = os.path.join(os.path.dirname(sys.executable), "resources", "images", f"{icon_name}.png")
         if os.path.exists(icon_path):
             btn.setIcon(QIcon(icon_path))
             btn.setIconSize(QSize(24, 24))

@@ -18,13 +18,6 @@
         "auto_scroll": true,
         "max_lines": 1000
     },
-    "logging": {
-        "enabled": false,
-        "log_dir": "D:/HuaweiMoveData/Users/Caibinbin/Desktop/data",
-        "log_format": "csv",
-        "auto_filename": true,
-        "include_timestamp": true
-    },
     "adaptive_grasp": {
         "finger_indices": [
             0,

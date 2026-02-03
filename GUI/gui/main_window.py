@@ -14,14 +14,12 @@ from PyQt6.QtWidgets import (
 # 导入自定义模块
 from core.serial_manager import SerialManager
 from core.sensor_data_manager import SensorDataManager
-from core.data_logger import DataLogger
 from core.app_settings import Settings
 from core.action_manager import ActionManager
 
 from gui.ui_functions import UIFunctions
 from gui.widgets.left_menu import LeftMenu
 from gui.widgets.title_bar import TitleBar
-from gui.pages.home_page import HomePage
 from gui.pages.serial_page import SerialPage
 from gui.pages.sensor_data_page import SensorDataPage
 from gui.pages.settings_page import SettingsPage
@@ -30,7 +28,6 @@ from gui.themes.theme_manager import ThemeManager
 from gui.pages.force_visualization_page import ForceVisualizationPage
 from gui.pages.action_manager_page import ActionManagerPage
 
-from gui.pages.xarm_inspire_page import XArmInspirePage
 # 导入样式
 from gui.styles.style import Style
 
@@ -133,9 +130,6 @@ class MainWindow(QMainWindow):
         """初始化数据管理相关组件"""
         # 初始化传感器数据管理器
         self.sensor_data_manager = SensorDataManager()
-        
-        # 初始化数据记录器
-        self.data_logger = DataLogger(self.settings)
 
     def initialize_hardware_components(self):
         """初始化硬件控制相关组件"""
@@ -163,7 +157,6 @@ class MainWindow(QMainWindow):
     def finalize_initialization(self):
         """完成初始化，创建剩余页面并连接信号"""
         # 创建各个页面
-        self.home_page = HomePage(self)
         self.serial_page = SerialPage(self, self.serial_manager)
         self.sensor_data_page = SensorDataPage(self, self.sensor_data_manager)
         self.force_visualization_page = ForceVisualizationPage(self, self.sensor_data_manager)
@@ -174,12 +167,10 @@ class MainWindow(QMainWindow):
         self.adaptive_grasp_page = AdaptiveGraspPage(self, self.adaptive_grasp_controller)
 
         self.settings_page = SettingsPage(self, self.theme_manager)
-        self.xarm_inspire_page = XArmInspirePage(self)
 
 
 
         # 将页面添加到堆叠部件
-        self.pages.addWidget(self.home_page)
         self.pages.addWidget(self.serial_page)
         self.pages.addWidget(self.sensor_data_page)
         self.pages.addWidget(self.force_visualization_page)
@@ -187,7 +178,6 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.adaptive_grasp_page)
 
         self.pages.addWidget(self.settings_page)
-        self.pages.addWidget(self.xarm_inspire_page)
 
         # 连接信号槽
         self.connect_signals()
@@ -195,16 +185,18 @@ class MainWindow(QMainWindow):
         # 应用样式表
         self.set_stylesheet()
 
-        # 初始化页面
-        self.show_home_page()
-        
+        # 设置窗口图标
+        self.set_window_icon()
+
+        # 初始化页面 - 显示串口页面
+        self.show_serial_page()
+
         # 处理自动连接串口
         self.handle_auto_connect()
 
     def connect_signals(self):
         """连接信号和槽"""
         # 连接左侧菜单按钮点击事件
-        self.left_menu.home_btn.clicked.connect(self.show_home_page)
         self.left_menu.serial_btn.clicked.connect(self.show_serial_page)
         # 连接传感器数据页面按钮
         self.left_menu.data_btn.clicked.connect(self.show_sensor_data_page)
@@ -212,8 +204,6 @@ class MainWindow(QMainWindow):
         self.left_menu.force_btn.clicked.connect(self.show_force_visualization_page)
         self.left_menu.action_btn.clicked.connect(self.show_action_manager_page)
         self.left_menu.adaptive_grasp_btn.clicked.connect(self.show_adaptive_grasp_page)
-
-        self.left_menu.xarm_btn.clicked.connect(self.show_xarm_inspire_page)
         self.left_menu.settings_btn.clicked.connect(self.show_settings_page)
 
         # 连接标题栏按钮事件
@@ -226,11 +216,26 @@ class MainWindow(QMainWindow):
         style = Style.get_style(self.theme_manager.current_theme)
         self.setStyleSheet(style)
 
-    def show_home_page(self):
-        """显示主页"""
-        self.pages.setCurrentWidget(self.home_page)
-        self.left_menu.select_menu_button(self.left_menu.home_btn)
-        self.title_bar.title_label.setText("主页")
+    def set_window_icon(self):
+        """设置窗口图标"""
+        try:
+            from builtins import APP_ROOT_PATH
+            icon_path = os.path.join(APP_ROOT_PATH, "resources", "images", "icon.png")
+        except (ImportError, AttributeError):
+            icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                    "resources", "images", "icon.png")
+
+        # 在打包环境中，资源文件位于临时目录中
+        if getattr(sys, 'frozen', False):
+            # PyInstaller打包环境
+            if hasattr(sys, '_MEIPASS'):
+                icon_path = os.path.join(sys._MEIPASS, "resources", "images", "icon.png")
+            else:
+                # 备用方案：可执行文件所在目录
+                icon_path = os.path.join(os.path.dirname(sys.executable), "resources", "images", "icon.png")
+
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
     def show_serial_page(self):
         """显示串口页面"""
@@ -268,11 +273,6 @@ class MainWindow(QMainWindow):
 
 
 
-    def show_xarm_inspire_page(self):
-        """显示瑞尔曼集成页面"""
-        self.pages.setCurrentWidget(self.xarm_inspire_page)
-        self.left_menu.select_menu_button(self.left_menu.xarm_btn)
-        self.title_bar.title_label.setText("瑞尔曼集成")
 
     def show_adaptive_grasp_page(self):
         """显示自适应抓取页面"""
@@ -295,10 +295,6 @@ class MainWindow(QMainWindow):
         # 关闭串口连接
         if self.serial_manager.is_connected():
             self.serial_manager.disconnect()
-            
-        # 停止数据记录
-        if hasattr(self, "data_logger"):
-            self.data_logger.stop_logging()
 
         # 在保存全局设置前，让页面保存自己的参数（例如自适应抓取页面）
         try:

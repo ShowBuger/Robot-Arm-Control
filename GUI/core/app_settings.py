@@ -40,15 +40,6 @@ class Settings(QObject):
                 "hex_display": False,
                 "auto_scroll": True,
                 "max_lines": 1000
-            },
-
-            # 数据记录设置
-            "logging": {
-                "enabled": False,
-                "log_dir": "",
-                "log_format": "txt",
-                "auto_filename": True,
-                "include_timestamp": True
             }
         }
 
@@ -168,15 +159,6 @@ class Settings(QObject):
                 "hex_display": False,
                 "auto_scroll": True,
                 "max_lines": 1000
-            },
-
-            # 数据记录设置
-            "logging": {
-                "enabled": False,
-                "log_dir": "",
-                "log_format": "txt",
-                "auto_filename": True,
-                "include_timestamp": True
             }
         }
 

@@ -151,53 +151,6 @@ class SettingsPage(QWidget):
         # 添加串口选项卡
         self.tab_widget.addTab(self.serial_tab, "串口设置")
 
-        # 创建数据记录选项卡
-        self.logging_tab = QWidget()
-        self.logging_layout = QVBoxLayout(self.logging_tab)
-        self.logging_layout.setContentsMargins(10, 10, 10, 10)
-        self.logging_layout.setSpacing(15)
-
-        # 数据记录设置组
-        self.logging_group = QGroupBox("数据记录设置")
-        self.logging_layout_group = QVBoxLayout(self.logging_group)
-
-        self.enable_logging_check = QCheckBox("启用数据记录")
-        self.logging_layout_group.addWidget(self.enable_logging_check)
-
-        # 数据记录路径设置
-        self.log_path_layout = QHBoxLayout()
-        self.log_path_layout.addWidget(QLabel("保存目录:"))
-        self.log_path_edit = QLineEdit()
-        self.log_path_edit.setReadOnly(True)
-        self.log_path_layout.addWidget(self.log_path_edit)
-        self.browse_log_path_btn = QPushButton("浏览...")
-        self.browse_log_path_btn.setObjectName("secondaryButton")
-        self.log_path_layout.addWidget(self.browse_log_path_btn)
-        self.logging_layout_group.addLayout(self.log_path_layout)
-
-        # 日志格式设置
-        self.log_format_layout = QHBoxLayout()
-        self.log_format_layout.addWidget(QLabel("日志格式:"))
-        self.log_format_combo = QComboBox()
-        self.log_format_combo.addItems(["TXT", "CSV"])
-        self.log_format_layout.addWidget(self.log_format_combo)
-        self.log_format_layout.addStretch()
-        self.logging_layout_group.addLayout(self.log_format_layout)
-
-        # 日志文件名设置
-        self.auto_filename_check = QCheckBox("自动生成文件名 (日期时间)")
-        self.auto_filename_check.setChecked(True)
-        self.logging_layout_group.addWidget(self.auto_filename_check)
-
-        self.include_timestamp_check = QCheckBox("数据中包含时间戳")
-        self.include_timestamp_check.setChecked(True)
-        self.logging_layout_group.addWidget(self.include_timestamp_check)
-
-        self.logging_layout.addWidget(self.logging_group)
-
-        # 添加数据记录选项卡
-        self.tab_widget.addTab(self.logging_tab, "数据记录")
-
         # 添加选项卡控件到主布局
         self.main_layout.addWidget(self.tab_widget)
 
@@ -226,9 +179,6 @@ class SettingsPage(QWidget):
         """连接信号和槽"""
         # 应用主题按钮
         self.apply_theme_btn.clicked.connect(self.apply_theme)
-
-        # 浏览日志目录按钮
-        self.browse_log_path_btn.clicked.connect(self.browse_log_directory)
 
         # 保存设置按钮
         self.save_btn.clicked.connect(self.save_settings)
@@ -281,26 +231,6 @@ class SettingsPage(QWidget):
             
             # 最大行数
             self.max_lines_spin.setValue(display_settings.get("max_lines", 1000))
-        
-        # 加载日志设置
-        logging_settings = settings.get_setting("logging")
-        if logging_settings:
-            # 是否启用日志
-            self.enable_logging_check.setChecked(logging_settings.get("enabled", False))
-            
-            # 日志目录
-            self.log_path_edit.setText(logging_settings.get("log_dir", ""))
-            
-            # 日志格式
-            log_format = logging_settings.get("log_format", "txt").upper()
-            if self.log_format_combo.findText(log_format) >= 0:
-                self.log_format_combo.setCurrentText(log_format)
-            
-            # 自动文件名
-            self.auto_filename_check.setChecked(logging_settings.get("auto_filename", True))
-            
-            # 包含时间戳
-            self.include_timestamp_check.setChecked(logging_settings.get("include_timestamp", True))
 
     def apply_theme(self):
         """应用选中的主题"""
@@ -322,35 +252,6 @@ class SettingsPage(QWidget):
         """主题选择改变时的响应"""
         # 自动应用主题
         self.apply_theme()
-
-    def browse_log_directory(self):
-        """浏览日志保存目录"""
-        directory = QFileDialog.getExistingDirectory(
-            self,
-            "选择日志保存目录",
-            self.log_path_edit.text() or os.path.join(APP_ROOT_PATH, "logs")
-        )
-
-        if directory:
-            self.log_path_edit.setText(directory)
-            
-            # 立即应用目录设置，这样用户不需要点保存按钮就能改变日志目录
-            if hasattr(self.main_window, "settings") and hasattr(self.main_window, "data_logger"):
-                # 获取当前日志设置
-                logging_settings = self.main_window.settings.get_setting("logging")
-                if logging_settings is None:
-                    logging_settings = {}
-                else:
-                    logging_settings = logging_settings.copy()
-                
-                # 更新日志目录
-                logging_settings["log_dir"] = directory
-                
-                # 应用设置
-                self.main_window.settings.update_settings({"logging": logging_settings})
-                
-                # 确保数据记录器更新目录
-                self.main_window.data_logger.ensure_log_directory()
 
     def save_settings(self):
         """保存设置"""
@@ -380,32 +281,7 @@ class SettingsPage(QWidget):
             "max_lines": self.max_lines_spin.value()
         }
         settings.update_settings({"display": display_settings})
-        
-        # 获取当前日志设置状态
-        old_logging_settings = settings.get_setting("logging")
-        old_enabled = old_logging_settings.get("enabled", False) if old_logging_settings else False
-        
-        # 保存日志设置
-        logging_settings = {
-            "enabled": self.enable_logging_check.isChecked(),
-            "log_dir": self.log_path_edit.text(),
-            "log_format": self.log_format_combo.currentText().lower(),
-            "auto_filename": self.auto_filename_check.isChecked(),
-            "include_timestamp": self.include_timestamp_check.isChecked()
-        }
-        settings.update_settings({"logging": logging_settings})
-        
-        # 检查是否需要立即启动或停止数据记录
-        if hasattr(self.main_window, "data_logger"):
-            # 如果启用状态发生变化
-            if old_enabled != logging_settings["enabled"]:
-                if logging_settings["enabled"]:
-                    self.main_window.data_logger.start_logging()
-                    print("已启用数据记录")
-                else:
-                    self.main_window.data_logger.stop_logging()
-                    print("已禁用数据记录")
-        
+
         # 通知用户保存成功
         QMessageBox.information(self, "保存成功", "设置已成功保存")
 

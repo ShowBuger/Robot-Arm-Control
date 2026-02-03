@@ -550,10 +550,6 @@ class AdaptiveGraspPage(QWidget):
         if adaptive_ctrl_arm is not None and adaptive_ctrl_arm is not main_ctrl:
             candidates.append(('adaptive_grasp.arm_controller', adaptive_ctrl_arm))
 
-        xarm_page = getattr(self.main_window, 'xarm_inspire_page', None)
-        xarm_page_ctrl = getattr(xarm_page, 'controller', None) if xarm_page is not None else None
-        if xarm_page_ctrl is not None and xarm_page_ctrl not in [c for _, c in candidates]:
-            candidates.append(('xarm_inspire_page.controller', xarm_page_ctrl))
 
         # 也检查 action_manager 中的 arm_controller（某些页面可能覆盖了动作管理器的控制器）
         action_mgr = getattr(self.main_window, 'action_manager', None)

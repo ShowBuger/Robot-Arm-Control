@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os
+import sys
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtWidgets import (
@@ -75,7 +76,21 @@ class TitleBar(QWidget):
     def load_system_buttons(self):
         """加载系统按钮图标"""
         # 图标路径
-        icons_path = os.path.join(APP_ROOT_PATH, "resources", "images")
+        try:
+            from builtins import APP_ROOT_PATH
+            icons_path = os.path.join(APP_ROOT_PATH, "resources", "images")
+        except (ImportError, AttributeError):
+            icons_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                     "resources", "images")
+
+        # 在打包环境中，资源文件位于临时目录中
+        if getattr(sys, 'frozen', False):
+            # PyInstaller打包环境
+            if hasattr(sys, '_MEIPASS'):
+                icons_path = os.path.join(sys._MEIPASS, "resources", "images")
+            else:
+                # 备用方案：可执行文件所在目录
+                icons_path = os.path.join(os.path.dirname(sys.executable), "resources", "images")
 
         # 尝试加载图标
         min_icon_path = os.path.join(icons_path, "minimize.png")
@@ -93,21 +108,34 @@ class TitleBar(QWidget):
 
     def toggle_maximize(self):
         """切换最大化/还原窗口"""
+        # 获取正确的图标路径
+        try:
+            from builtins import APP_ROOT_PATH
+            icons_path = os.path.join(APP_ROOT_PATH, "resources", "images")
+        except (ImportError, AttributeError):
+            icons_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                                     "resources", "images")
+
+        # 在打包环境中，资源文件位于临时目录中
+        if getattr(sys, 'frozen', False):
+            # PyInstaller打包环境
+            if hasattr(sys, '_MEIPASS'):
+                icons_path = os.path.join(sys._MEIPASS, "resources", "images")
+            else:
+                # 备用方案：可执行文件所在目录
+                icons_path = os.path.join(os.path.dirname(sys.executable), "resources", "images")
+
         if self.parent.isMaximized():
             self.parent.showNormal()
-            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                                           "resources", "images", "maximize.png")):
-                self.maximize_btn.setIcon(
-                    QIcon(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                                       "resources", "images", "maximize.png")))
+            max_icon_path = os.path.join(icons_path, "maximize.png")
+            if os.path.exists(max_icon_path):
+                self.maximize_btn.setIcon(QIcon(max_icon_path))
             self.maximize_btn.setToolTip("最大化")
         else:
             self.parent.showMaximized()
-            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                                           "resources", "images", "restore.png")):
-                self.maximize_btn.setIcon(
-                    QIcon(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-                                       "resources", "images", "restore.png")))
+            restore_icon_path = os.path.join(icons_path, "restore.png")
+            if os.path.exists(restore_icon_path):
+                self.maximize_btn.setIcon(QIcon(restore_icon_path))
             self.maximize_btn.setToolTip("还原")
 
     def mousePressEvent(self, event):

@@ -881,15 +881,35 @@ class ActionManagerPage(QWidget):
         # 2. 设备控制区域
         control_group = QGroupBox("设备控制")
         control_layout = QVBoxLayout(control_group)  # 改为垂直布局以更好地适应滑块设计
-        
+
         # 创建一个水平容器来放置两个控制组
         controls_container = QWidget()
         controls_container_layout = QHBoxLayout(controls_container)
         controls_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        # 保存为实例变量供其他方法使用
+        self._controls_container_layout = controls_container_layout
+        self._control_layout = control_layout
+        self._hand_connection_layout = layout
         
         # 瑞尔曼控制
-        arm_group = QGroupBox("瑞尔曼机械臂")
-        arm_layout = QVBoxLayout(arm_group)
+        self.arm_group = QGroupBox("瑞尔曼机械臂")
+        arm_layout = QVBoxLayout(self.arm_group)
+
+        # 控制模式选择
+        mode_layout = QHBoxLayout()
+        mode_layout.addWidget(QLabel("控制模式:"))
+        self.arm_control_mode = QComboBox()
+        self.arm_control_mode.addItems([
+            "笛卡尔直线",  # Cartesian Linear
+            "关节角度",    # Joint Angles
+            "笛卡尔偏移",  # Cartesian Offset
+            "速度控制"     # Velocity Control
+        ])
+        self.arm_control_mode.currentTextChanged.connect(self.on_arm_control_mode_changed)
+        mode_layout.addWidget(self.arm_control_mode)
+        mode_layout.addStretch()
+        arm_layout.addLayout(mode_layout)
         
         # 创建机械臂参数配置
         arm_params = [
@@ -998,9 +1018,167 @@ class ActionManagerPage(QWidget):
         arm_buttons_layout.addWidget(self.get_current_pose_btn)
         
         arm_layout.addLayout(arm_buttons_layout)
-        
-        controls_container_layout.addWidget(arm_group)
-        
+
+        self._controls_container_layout.addWidget(self.arm_group)
+
+        # 初始化控制模式 - 预先创建所有控件
+        self._create_all_control_widgets()
+        self.on_arm_control_mode_changed(self.arm_control_mode.currentText())
+
+        # 添加控制容器到主控制组
+        control_layout.addWidget(controls_container)
+
+        layout.addWidget(control_group)
+
+        # 设置状态显示区域
+        self.setup_status_group(layout)
+
+    def _create_all_control_widgets(self):
+        """预先创建所有控制模式的控件"""
+        arm_layout = self.arm_group.layout()
+
+        # 创建关节角度控制控件
+        self.joint_controls_widget = QWidget()
+        joint_layout = QVBoxLayout(self.joint_controls_widget)
+
+        # 关节角度参数
+        joint_params = [
+            {"name": "关节1", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节2", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节3", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节4", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节5", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节6", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节7", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
+        ]
+
+        self.joint_spinboxes = []
+        for param in joint_params:
+            param_layout = QHBoxLayout()
+            param_layout.addWidget(QLabel(f"{param['name']}:"))
+
+            spinbox = QDoubleSpinBox()
+            spinbox.setRange(param["min"], param["max"])
+            spinbox.setValue(param["default"])
+            spinbox.setDecimals(1)
+            spinbox.setSingleStep(1.0)
+            spinbox.setSuffix(param["suffix"])
+            spinbox.setKeyboardTracking(False)
+            param_layout.addWidget(spinbox)
+            self.joint_spinboxes.append(spinbox)
+
+            joint_layout.addLayout(param_layout)
+
+        # 控制按钮
+        joint_buttons_layout = QHBoxLayout()
+        self.get_current_joints_btn = QPushButton("获取当前关节角度")
+        self.get_current_joints_btn.clicked.connect(self.get_current_joint_angles)
+        joint_buttons_layout.addWidget(self.get_current_joints_btn)
+
+        self.move_joints_btn = QPushButton("移动到关节角度")
+        self.move_joints_btn.clicked.connect(self.move_to_joint_angles)
+        joint_buttons_layout.addWidget(self.move_joints_btn)
+
+        joint_layout.addLayout(joint_buttons_layout)
+        self.joint_controls_widget.setVisible(False)
+        arm_layout.addWidget(self.joint_controls_widget)
+
+        # 创建笛卡尔偏移控制控件
+        self.offset_controls_widget = QWidget()
+        offset_layout = QVBoxLayout(self.offset_controls_widget)
+
+        # 偏移参数
+        offset_params = [
+            {"name": "ΔX", "min": -500, "max": 500, "default": 0.0, "suffix": " mm"},
+            {"name": "ΔY", "min": -500, "max": 500, "default": 0.0, "suffix": " mm"},
+            {"name": "ΔZ", "min": -500, "max": 500, "default": 0.0, "suffix": " mm"},
+            {"name": "ΔRoll", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "ΔPitch", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "ΔYaw", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
+        ]
+
+        self.offset_spinboxes = []
+        for param in offset_params:
+            param_layout = QHBoxLayout()
+            param_layout.addWidget(QLabel(f"{param['name']}:"))
+
+            spinbox = QDoubleSpinBox()
+            spinbox.setRange(param["min"], param["max"])
+            spinbox.setValue(param["default"])
+            spinbox.setDecimals(1)
+            spinbox.setSingleStep(1.0)
+            spinbox.setSuffix(param["suffix"])
+            spinbox.setKeyboardTracking(False)
+            param_layout.addWidget(spinbox)
+            self.offset_spinboxes.append(spinbox)
+
+            offset_layout.addLayout(param_layout)
+
+        # 坐标系选择
+        frame_layout = QHBoxLayout()
+        frame_layout.addWidget(QLabel("坐标系:"))
+        self.offset_frame_type = QComboBox()
+        self.offset_frame_type.addItems(["工作坐标系", "工具坐标系"])
+        frame_layout.addWidget(self.offset_frame_type)
+        frame_layout.addStretch()
+        offset_layout.addLayout(frame_layout)
+
+        # 控制按钮
+        offset_buttons_layout = QHBoxLayout()
+        self.move_offset_btn = QPushButton("执行偏移运动")
+        self.move_offset_btn.clicked.connect(self.move_cartesian_offset)
+        offset_buttons_layout.addWidget(self.move_offset_btn)
+
+        offset_layout.addLayout(offset_buttons_layout)
+        self.offset_controls_widget.setVisible(False)
+        arm_layout.addWidget(self.offset_controls_widget)
+
+        # 创建速度控制控件
+        self.velocity_controls_widget = QWidget()
+        velocity_layout = QVBoxLayout(self.velocity_controls_widget)
+
+        # 速度参数
+        velocity_params = [
+            {"name": "线速度X", "min": -1.0, "max": 1.0, "default": 0.0, "suffix": " m/s"},
+            {"name": "线速度Y", "min": -1.0, "max": 1.0, "default": 0.0, "suffix": " m/s"},
+            {"name": "线速度Z", "min": -1.0, "max": 1.0, "default": 0.0, "suffix": " m/s"},
+            {"name": "角速度Roll", "min": -3.14, "max": 3.14, "default": 0.0, "suffix": " rad/s"},
+            {"name": "角速度Pitch", "min": -3.14, "max": 3.14, "default": 0.0, "suffix": " rad/s"},
+            {"name": "角速度Yaw", "min": -3.14, "max": 3.14, "default": 0.0, "suffix": " rad/s"}
+        ]
+
+        self.velocity_spinboxes = []
+        for param in velocity_params:
+            param_layout = QHBoxLayout()
+            param_layout.addWidget(QLabel(f"{param['name']}:"))
+
+            spinbox = QDoubleSpinBox()
+            spinbox.setRange(param["min"], param["max"])
+            spinbox.setValue(param["default"])
+            spinbox.setDecimals(3)
+            spinbox.setSingleStep(0.01)
+            spinbox.setSuffix(param["suffix"])
+            spinbox.setKeyboardTracking(False)
+            param_layout.addWidget(spinbox)
+            self.velocity_spinboxes.append(spinbox)
+
+            velocity_layout.addLayout(param_layout)
+
+        # 控制按钮
+        velocity_buttons_layout = QHBoxLayout()
+        self.start_velocity_btn = QPushButton("开始速度控制")
+        self.start_velocity_btn.clicked.connect(self.start_velocity_control)
+        velocity_buttons_layout.addWidget(self.start_velocity_btn)
+
+        self.stop_velocity_btn = QPushButton("停止速度控制")
+        self.stop_velocity_btn.clicked.connect(self.stop_velocity_control)
+        self.stop_velocity_btn.setEnabled(False)
+        velocity_buttons_layout.addWidget(self.stop_velocity_btn)
+
+        velocity_layout.addLayout(velocity_buttons_layout)
+        self.velocity_controls_widget.setVisible(False)
+        arm_layout.addWidget(self.velocity_controls_widget)
+
         # Inspire控制
         hand_group = QGroupBox("Inspire机械手")
         hand_layout = QVBoxLayout(hand_group)
@@ -1115,14 +1293,11 @@ class ActionManagerPage(QWidget):
         hand_buttons_layout.addWidget(self.save_action_btn)
         
         hand_layout.addLayout(hand_buttons_layout)
-        
-        controls_container_layout.addWidget(hand_group)
-        
-        # 将控制容器添加到主控制组
-        control_layout.addWidget(controls_container)
-        
-        layout.addWidget(control_group)
 
+        self._controls_container_layout.addWidget(hand_group)
+
+    def setup_status_group(self, layout):
+        """设置状态显示区域"""
         # 3. 设备状态区域
         status_group = QGroupBox("设备状态")
         status_layout = QVBoxLayout(status_group)
@@ -1171,6 +1346,148 @@ class ActionManagerPage(QWidget):
 
         # 序列列表选择变化
         self.sequences_list.itemSelectionChanged.connect(self.on_sequence_selection_changed)
+
+    def on_arm_control_mode_changed(self, mode: str):
+        """处理机械臂控制模式变化"""
+        # 确保arm_group已经初始化
+        if not hasattr(self, 'arm_group'):
+            return
+
+        # 根据选择的模式调整UI显示
+        if mode == "关节角度":
+            # 显示关节角度控制界面
+            self._show_joint_angle_controls()
+        elif mode == "笛卡尔直线":
+            # 显示笛卡尔直线控制界面
+            self._show_cartesian_linear_controls()
+        elif mode == "笛卡尔偏移":
+            # 显示笛卡尔偏移控制界面
+            self._show_cartesian_offset_controls()
+        elif mode == "速度控制":
+            # 显示速度控制界面
+            self._show_velocity_controls()
+
+        # 强制更新布局
+        self.arm_group.update()
+
+    def _show_joint_angle_controls(self):
+        """显示关节角度控制界面"""
+        # 显示关节角度控件，隐藏其他控件
+        if hasattr(self, 'joint_controls_widget'):
+            self.joint_controls_widget.show()
+        if hasattr(self, 'offset_controls_widget'):
+            self.offset_controls_widget.hide()
+        if hasattr(self, 'velocity_controls_widget'):
+            self.velocity_controls_widget.hide()
+
+    def _show_cartesian_linear_controls(self):
+        """显示笛卡尔直线控制界面"""
+        # 隐藏所有额外控件，显示默认的笛卡尔控制界面
+        if hasattr(self, 'joint_controls_widget'):
+            self.joint_controls_widget.hide()
+        if hasattr(self, 'offset_controls_widget'):
+            self.offset_controls_widget.hide()
+        if hasattr(self, 'velocity_controls_widget'):
+            self.velocity_controls_widget.hide()
+
+    def _show_cartesian_offset_controls(self):
+        """显示笛卡尔偏移控制界面"""
+        # 显示偏移控件，隐藏其他控件
+        if hasattr(self, 'offset_controls_widget'):
+            self.offset_controls_widget.show()
+        if hasattr(self, 'joint_controls_widget'):
+            self.joint_controls_widget.hide()
+        if hasattr(self, 'velocity_controls_widget'):
+            self.velocity_controls_widget.hide()
+
+    def _show_velocity_controls(self):
+        """显示速度控制界面"""
+        # 显示速度控件，隐藏其他控件
+        if hasattr(self, 'velocity_controls_widget'):
+            self.velocity_controls_widget.show()
+        if hasattr(self, 'joint_controls_widget'):
+            self.joint_controls_widget.hide()
+        if hasattr(self, 'offset_controls_widget'):
+            self.offset_controls_widget.hide()
+
+
+    def get_current_joint_angles(self):
+        """获取当前关节角度"""
+        if not hasattr(self, 'integrated_controller') or not self.integrated_controller:
+            QMessageBox.warning(self, "错误", "控制器未初始化")
+            return
+
+        angles = self.integrated_controller.get_arm_angles()
+        if angles:
+            for i, angle in enumerate(angles[:len(self.joint_spinboxes)]):
+                self.joint_spinboxes[i].setValue(angle)
+            self.log_message(f"获取当前关节角度: {angles}")
+        else:
+            QMessageBox.warning(self, "错误", "获取关节角度失败")
+
+    def move_to_joint_angles(self):
+        """移动到指定关节角度"""
+        if not hasattr(self, 'integrated_controller') or not self.integrated_controller:
+            QMessageBox.warning(self, "错误", "控制器未初始化")
+            return
+
+        angles = [spinbox.value() for spinbox in self.joint_spinboxes]
+        if self.integrated_controller.set_arm_angles(angles):
+            self.log_message(f"关节角度移动成功: {angles}")
+        else:
+            QMessageBox.warning(self, "错误", "关节角度移动失败")
+
+    def move_cartesian_offset(self):
+        """执行笛卡尔偏移运动"""
+        if not hasattr(self, 'integrated_controller') or not self.integrated_controller:
+            QMessageBox.warning(self, "错误", "控制器未初始化")
+            return
+
+        # 将mm转换为m，度转换为弧度
+        offset = [
+            self.offset_spinboxes[0].value() / 1000.0,  # mm -> m
+            self.offset_spinboxes[1].value() / 1000.0,
+            self.offset_spinboxes[2].value() / 1000.0,
+            self.offset_spinboxes[3].value() * 3.14159 / 180.0,  # deg -> rad
+            self.offset_spinboxes[4].value() * 3.14159 / 180.0,
+            self.offset_spinboxes[5].value() * 3.14159 / 180.0
+        ]
+
+        frame_type = 0 if self.offset_frame_type.currentText() == "工作坐标系" else 1
+
+        if self.integrated_controller.move_arm_cartesian_offset(offset, frame_type=frame_type):
+            self.log_message(f"笛卡尔偏移运动成功: {offset}")
+        else:
+            QMessageBox.warning(self, "错误", "笛卡尔偏移运动失败")
+
+    def start_velocity_control(self):
+        """开始速度控制"""
+        if not hasattr(self, 'integrated_controller') or not self.integrated_controller:
+            QMessageBox.warning(self, "错误", "控制器未初始化")
+            return
+
+        velocity = [spinbox.value() for spinbox in self.velocity_spinboxes]
+        if self.integrated_controller.move_arm_velocity(velocity):
+            self.log_message(f"速度控制开始: {velocity}")
+            self.start_velocity_btn.setEnabled(False)
+            self.stop_velocity_btn.setEnabled(True)
+        else:
+            QMessageBox.warning(self, "错误", "速度控制启动失败")
+
+    def stop_velocity_control(self):
+        """停止速度控制"""
+        if not hasattr(self, 'integrated_controller') or not self.integrated_controller:
+            QMessageBox.warning(self, "错误", "控制器未初始化")
+            return
+
+        # 发送零速度来停止运动
+        zero_velocity = [0.0] * 6
+        if self.integrated_controller.move_arm_velocity(zero_velocity):
+            self.log_message("速度控制已停止")
+            self.start_velocity_btn.setEnabled(True)
+            self.stop_velocity_btn.setEnabled(False)
+        else:
+            QMessageBox.warning(self, "错误", "停止速度控制失败")
         
         # 添加集成控制器信号连接
         if hasattr(self.integrated_controller, 'connected_signal'):
@@ -2352,20 +2669,40 @@ class ActionManagerPage(QWidget):
         thread.start()
 
     def move_arm(self):
-        """移动机械臂 - 使用ArmController"""
-        position = [
-            self.arm_x.value(),
-            self.arm_y.value(),
-            self.arm_z.value(),
-            self.arm_roll.value(),
-            self.arm_pitch.value(),
-            self.arm_yaw.value()
-        ]
-        
-        if self.integrated_controller.move_arm(position):
-            self.log_message(f"机械臂移动到: {position}")
-        else:
-            self.log_message("机械臂移动失败")
+        """移动机械臂 - 根据控制模式调用相应方法"""
+        if not hasattr(self, 'integrated_controller') or not self.integrated_controller:
+            self.log_message("控制器未初始化")
+            return
+
+        current_mode = self.arm_control_mode.currentText()
+
+        if current_mode == "笛卡尔直线":
+            # 笛卡尔直线运动
+            position = [
+                self.arm_x.value() / 1000.0,  # mm -> m
+                self.arm_y.value() / 1000.0,
+                self.arm_z.value() / 1000.0,
+                self.arm_roll.value() * 3.14159 / 180.0,  # deg -> rad
+                self.arm_pitch.value() * 3.14159 / 180.0,
+                self.arm_yaw.value() * 3.14159 / 180.0
+            ]
+
+            if self.integrated_controller.move_arm_cartesian_linear(position):
+                self.log_message(f"笛卡尔直线运动成功: {position}")
+            else:
+                self.log_message("笛卡尔直线运动失败")
+
+        elif current_mode == "关节角度":
+            # 关节角度运动 - 这个应该在move_to_joint_angles方法中处理
+            self.move_to_joint_angles()
+
+        elif current_mode == "笛卡尔偏移":
+            # 笛卡尔偏移运动 - 这个应该在move_cartesian_offset方法中处理
+            self.move_cartesian_offset()
+
+        elif current_mode == "速度控制":
+            # 速度控制 - 这个应该在start_velocity_control方法中处理
+            self.start_velocity_control()
 
     def set_hand_angles(self):
         """设置手指角度 - 使用ArmController"""
@@ -2710,11 +3047,9 @@ class ActionManagerPage(QWidget):
             }
             QPushButton:hover {
                 background-color: #ff6e6e;
-                transform: scale(1.05);
             }
             QPushButton:pressed {
                 background-color: #e64747;
-                transform: scale(0.95);
             }
         """)
         self.close_grasp_btn.clicked.connect(self.execute_close_grasp)
@@ -2735,11 +3070,9 @@ class ActionManagerPage(QWidget):
             }
             QPushButton:hover {
                 background-color: #7289bc;
-                transform: scale(1.05);
             }
             QPushButton:pressed {
                 background-color: #525b84;
-                transform: scale(0.95);
             }
         """)
         self.release_grasp_btn.clicked.connect(self.execute_release_grasp)
@@ -2762,11 +3095,9 @@ class ActionManagerPage(QWidget):
             }
             QPushButton:hover {
                 background-color: #5af78e;
-                transform: scale(1.02);
             }
             QPushButton:pressed {
                 background-color: #46e070;
-                transform: scale(0.98);
             }
         """)
         self.save_data_btn.clicked.connect(self.save_grasp_data)
@@ -2787,11 +3118,9 @@ class ActionManagerPage(QWidget):
             }
             QPushButton:hover {
                 background-color: #9cf0ff;
-                transform: scale(1.02);
             }
             QPushButton:pressed {
                 background-color: #7dd3e8;
-                transform: scale(0.98);
             }
         """)
         self.change_file_btn.clicked.connect(self.change_csv_file)

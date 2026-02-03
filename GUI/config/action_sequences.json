@@ -3,40 +3,24 @@
     "name": "抓桃子",
     "description": "",
     "actions": [
-      "准备抓",
       "抓住桃子",
-      "抓起桃子",
-      "准备抓"
+      "抓起桃子"
     ],
     "delays": [
-      2.0,
-      0.1,
       0.1,
       0.1
     ],
     "creation_time": 1748878198.8964677,
-    "last_modified": 1748889419.60843,
+    "last_modified": 1769136265.7227845,
     "repeat_count": 10
   },
   "抓砝码": {
     "name": "抓砝码",
     "description": "",
-    "actions": [
-      "准备抓砝码",
-      "抓住砝码",
-      "抓起砝码",
-      "抓住砝码",
-      "准备抓砝码"
-    ],
-    "delays": [
-      2.0,
-      0.3,
-      0.4,
-      0.2,
-      0.3
-    ],
+    "actions": [],
+    "delays": [],
     "creation_time": 1748880277.41922,
-    "last_modified": 1748880354.0983145,
+    "last_modified": 1769136262.905134,
     "repeat_count": 1
   },
   "段博": {

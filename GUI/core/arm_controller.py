@@ -607,17 +607,63 @@ class ArmController(QObject):
             return None
 
         try:
-            ret, state = self.arm.rm_get_current_arm_state()
+            ret, joint_angles = self.arm.rm_get_joint_degree()
 
-            if ret == 0 and state:
-                joint = state.get("joint", [])
-                return joint if joint else None
+            if ret == 0 and joint_angles:
+                return joint_angles
             else:
                 self.logger.error(f"获取机械臂角度失败, 错误码: {ret}")
                 return None
 
         except Exception as e:
             self.logger.error(f"获取机械臂角度异常: {e}")
+            return None
+
+    def get_arm_pose(self) -> Optional[List[float]]:
+        """
+        获取机械臂当前位姿。
+
+        Returns:
+            当前位姿 [x(米), y(米), z(米), roll(弧度), pitch(弧度), yaw(弧度)] 或 None
+        """
+        if not self.arm_connected or not self.arm:
+            return None
+
+        try:
+            ret, state = self.arm.rm_get_current_arm_state()
+
+            if ret == 0 and state:
+                pose = state.get("pose", [])
+                return pose if pose else None
+            else:
+                self.logger.error(f"获取机械臂位姿失败, 错误码: {ret}")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"获取机械臂位姿异常: {e}")
+            return None
+
+    def get_arm_state(self) -> Optional[Dict[str, Any]]:
+        """
+        获取机械臂当前完整状态。
+
+        Returns:
+            包含关节角度、位姿、力矩等信息的字典
+        """
+        if not self.arm_connected or not self.arm:
+            return None
+
+        try:
+            ret, state = self.arm.rm_get_current_arm_state()
+
+            if ret == 0 and state:
+                return state
+            else:
+                self.logger.error(f"获取机械臂状态失败, 错误码: {ret}")
+                return None
+
+        except Exception as e:
+            self.logger.error(f"获取机械臂状态异常: {e}")
             return None
 
     def set_arm_angles(self, angles: List[float], speed: int = 30, wait: bool = False) -> bool:
@@ -658,4 +704,195 @@ class ArmController(QObject):
         except Exception as e:
             self.logger.error(f"机械臂角度设置异常: {e}", exc_info=True)
             self.error_signal.emit(f"机械臂角度设置异常: {str(e)}")
+            return False
+
+    def move_arm_cartesian_linear(self, position: List[float], speed: int = 30, wait: bool = False,
+                                 blend_radius: int = 0, trajectory_connect: int = 0) -> bool:
+        """
+        笛卡尔空间直线运动。
+
+        Args:
+            position: 目标位姿 [x(米), y(米), z(米), roll(弧度), pitch(弧度), yaw(弧度)]
+            speed: 速度百分比(1-100)
+            wait: 是否等待完成
+            blend_radius: 交融半径百分比(0-100)
+            trajectory_connect: 轨迹连接标志(0-立即执行，1-轨迹连接)
+
+        Returns:
+            是否成功
+        """
+        if not self.arm_connected or not self.arm:
+            self.logger.error("机械臂未连接")
+            self.error_signal.emit("机械臂未连接")
+            return False
+
+        try:
+            if len(position) != 6:
+                raise ValueError("位置参数必须包含6个值 [x, y, z, roll, pitch, yaw]")
+
+            result = self.arm.rm_movel(
+                pose=position,
+                v=speed,
+                r=blend_radius,
+                connect=trajectory_connect,
+                block=1 if wait else 0
+            )
+
+            if result == 0:
+                self.logger.info(f"笛卡尔直线运动成功: {position}")
+                self.status_data["arm_position"] = position
+                self.status_data["last_command_time"] = time.time()
+                return True
+            else:
+                self.logger.error(f"笛卡尔直线运动失败, 错误码: {result}")
+                self.error_signal.emit(f"笛卡尔直线运动失败, 错误码: {result}")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"笛卡尔直线运动异常: {e}", exc_info=True)
+            self.error_signal.emit(f"笛卡尔直线运动异常: {str(e)}")
+            return False
+
+    def move_arm_cartesian_offset(self, offset: List[float], speed: int = 30, wait: bool = False,
+                                 blend_radius: int = 0, frame_type: int = 0, trajectory_connect: int = 0) -> bool:
+        """
+        笛卡尔空间偏移运动。
+
+        Args:
+            offset: 偏移量 [dx(米), dy(米), dz(米), drool(弧度), dpitch(弧度), dyaw(弧度)]
+            speed: 速度百分比(1-100)
+            wait: 是否等待完成
+            blend_radius: 交融半径百分比(0-100)
+            frame_type: 坐标系类型(0-工作坐标系，1-工具坐标系)
+            trajectory_connect: 轨迹连接标志(0-立即执行，1-轨迹连接)
+
+        Returns:
+            是否成功
+        """
+        if not self.arm_connected or not self.arm:
+            self.logger.error("机械臂未连接")
+            self.error_signal.emit("机械臂未连接")
+            return False
+
+        try:
+            if len(offset) != 6:
+                raise ValueError("偏移参数必须包含6个值 [dx, dy, dz, drool, dpitch, dyaw]")
+
+            result = self.arm.rm_movel_offset(
+                offset=offset,
+                v=speed,
+                r=blend_radius,
+                connect=trajectory_connect,
+                frame_type=frame_type,
+                block=1 if wait else 0
+            )
+
+            if result == 0:
+                self.logger.info(f"笛卡尔偏移运动成功: {offset}")
+                self.status_data["last_command_time"] = time.time()
+                return True
+            else:
+                self.logger.error(f"笛卡尔偏移运动失败, 错误码: {result}")
+                self.error_signal.emit(f"笛卡尔偏移运动失败, 错误码: {result}")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"笛卡尔偏移运动异常: {e}", exc_info=True)
+            self.error_signal.emit(f"笛卡尔偏移运动异常: {str(e)}")
+            return False
+
+    def move_arm_velocity(self, velocity: List[float], follow: bool = False, trajectory_mode: int = 0,
+                         radio: int = 0) -> bool:
+        """
+        笛卡尔空间速度控制运动。
+
+        Args:
+            velocity: 速度向量 [vx(米/秒), vy(米/秒), vz(米/秒), vroll(弧度/秒), vpitch(弧度/秒), vyaw(弧度/秒)]
+            follow: 是否跟随模式
+            trajectory_mode: 轨迹模式
+            radio: 无线电模式参数
+
+        Returns:
+            是否成功
+        """
+        if not self.arm_connected or not self.arm:
+            self.logger.error("机械臂未连接")
+            self.error_signal.emit("机械臂未连接")
+            return False
+
+        try:
+            if len(velocity) != 6:
+                raise ValueError("速度参数必须包含6个值 [vx, vy, vz, vroll, vpitch, vyaw]")
+
+            result = self.arm.rm_movev_canfd(
+                cartesian_velocity=velocity,
+                follow=follow,
+                trajectory_mode=trajectory_mode,
+                radio=radio
+            )
+
+            if result == 0:
+                self.logger.info(f"速度控制运动成功: {velocity}")
+                self.status_data["arm_velocity"] = velocity
+                self.status_data["last_command_time"] = time.time()
+                return True
+            else:
+                self.logger.error(f"速度控制运动失败, 错误码: {result}")
+                self.error_signal.emit(f"速度控制运动失败, 错误码: {result}")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"速度控制运动异常: {e}", exc_info=True)
+            self.error_signal.emit(f"速度控制运动异常: {str(e)}")
+            return False
+
+    def move_arm_arc(self, via_pose: List[float], target_pose: List[float], speed: int = 30,
+                    wait: bool = False, blend_radius: int = 0, loop: int = 0,
+                    trajectory_connect: int = 0) -> bool:
+        """
+        笛卡尔空间圆弧运动。
+
+        Args:
+            via_pose: 途径点位姿 [x(米), y(米), z(米), roll(弧度), pitch(弧度), yaw(弧度)]
+            target_pose: 目标点位姿 [x(米), y(米), z(米), roll(弧度), pitch(弧度), yaw(弧度)]
+            speed: 速度百分比(1-100)
+            wait: 是否等待完成
+            blend_radius: 交融半径百分比(0-100)
+            loop: 循环次数
+            trajectory_connect: 轨迹连接标志(0-立即执行，1-轨迹连接)
+
+        Returns:
+            是否成功
+        """
+        if not self.arm_connected or not self.arm:
+            self.logger.error("机械臂未连接")
+            self.error_signal.emit("机械臂未连接")
+            return False
+
+        try:
+            if len(via_pose) != 6 or len(target_pose) != 6:
+                raise ValueError("位姿参数必须包含6个值 [x, y, z, roll, pitch, yaw]")
+
+            result = self.arm.rm_movec(
+                pose_via=via_pose,
+                pose_to=target_pose,
+                v=speed,
+                r=blend_radius,
+                loop=loop,
+                connect=trajectory_connect,
+                block=1 if wait else 0
+            )
+
+            if result == 0:
+                self.logger.info(f"圆弧运动成功: via={via_pose}, target={target_pose}")
+                self.status_data["last_command_time"] = time.time()
+                return True
+            else:
+                self.logger.error(f"圆弧运动失败, 错误码: {result}")
+                self.error_signal.emit(f"圆弧运动失败, 错误码: {result}")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"圆弧运动异常: {e}", exc_info=True)
+            self.error_signal.emit(f"圆弧运动异常: {str(e)}")
             return False
