@@ -9,7 +9,7 @@ from PyQt6.QtCore import QObject, pyqtSignal
 
 
 class Action:
-    """单个动作类，包含机械臂位置和手爪角度信息"""
+    """单个动作类，包含机械臂关节角度和手爪角度信息"""
 
     def __init__(self, name: str, arm_position: List[float], hand_angles: List[int],
                  arm_velocity: int = 20, hand_velocity: int = 1000):
@@ -18,7 +18,7 @@ class Action:
 
         Args:
             name: 动作名称
-            arm_position: 机械臂位置 [x, y, z, roll, pitch, yaw]
+            arm_position: 机械臂关节角度 [j1, j2, j3, j4, j5, j6] (注：字段名保留为position以兼容旧数据)
             hand_angles: 手爪角度列表
             arm_velocity: 机械臂运动速度
             hand_velocity: 手爪运动速度
@@ -368,8 +368,9 @@ class ActionManager(QObject):
             print(f"保存动作错误: {e}")
             return False
 
-    def save_current_pose_as_action(self, name: str, use_ui_values: bool = False, 
-                                   ui_arm_position: List[float] = None, 
+    def save_current_pose_as_action(self, name: str, use_ui_values: bool = False,
+                                   ui_arm_position: List[float] = None,
+                                   ui_arm_angles: List[float] = None,
                                    ui_hand_angles: List[int] = None) -> bool:
         """
         将当前机械臂姿态保存为动作
@@ -377,18 +378,30 @@ class ActionManager(QObject):
         Args:
             name: 动作名称
             use_ui_values: 是否使用UI设置值而不是硬件当前值
-            ui_arm_position: UI中设置的机械臂位置（当use_ui_values=True时使用）
+            ui_arm_position: UI中设置的机械臂笛卡尔位置（已弃用，保留兼容性）
+            ui_arm_angles: UI中设置的关节角度（推荐使用）
             ui_hand_angles: UI中设置的手爪角度（当use_ui_values=True时使用）
 
         Returns:
             保存是否成功
         """
-        if use_ui_values and ui_arm_position is not None and ui_hand_angles is not None:
-            # 使用UI设置值，不获取硬件状态
-            print(f"使用UI设置值保存动作 '{name}'")
-            print(f"UI机械臂位置: {ui_arm_position}")
-            print(f"UI手爪角度: {ui_hand_angles}")
-            
+        if use_ui_values and ui_arm_angles is not None and ui_hand_angles is not None:
+            # 使用UI设置的关节角度，不获取硬件状态
+            print(f"使用关节角度保存动作 '{name}'")
+            print(f"关节角度: {ui_arm_angles}")
+            print(f"手爪角度: {ui_hand_angles}")
+
+            return self.save_action(
+                name=name,
+                arm_position=ui_arm_angles,  # 存储关节角度到arm_position字段
+                hand_angles=ui_hand_angles
+            )
+        elif use_ui_values and ui_arm_position is not None and ui_hand_angles is not None:
+            # 兼容旧的笛卡尔坐标方式
+            print(f"使用笛卡尔坐标保存动作 '{name}' (兼容模式)")
+            print(f"笛卡尔位置: {ui_arm_position}")
+            print(f"手爪角度: {ui_hand_angles}")
+
             return self.save_action(
                 name=name,
                 arm_position=ui_arm_position,
@@ -852,32 +865,32 @@ class ActionManager(QObject):
                 traceback.print_exc()
                 return False
 
-    def _execute_arm_command(self, position, velocity, max_retries=3):
+    def _execute_arm_command(self, angles, velocity, max_retries=3):
         """
-        执行机械臂动作命令，带重试逻辑
-        
+        执行机械臂动作命令，带重试逻辑（使用关节角度控制）
+
         Args:
-            position: 机械臂位置列表 [x, y, z, roll, pitch, yaw]
+            angles: 机械臂关节角度列表 [j1, j2, j3, j4, j5, j6]
             velocity: 执行速度
             max_retries: 最大重试次数
-            
+
         Returns:
             是否执行成功
         """
         if not self.arm_controller or not hasattr(self.arm_controller, 'is_connected'):
             print("机械臂控制器未初始化，无法执行命令")
             return False
-            
+
         if not self.arm_controller.is_connected():
             print("机械臂未连接，无法执行命令")
             return False
-            
+
         # 重试计数
         retry_count = 0
-        
+
         while retry_count < max_retries:
-            # 执行命令 - 使用move_arm_to_position方法
-            result = self.arm_controller.move_arm_to_position(position, velocity)
+            # 执行命令 - 使用关节角度控制
+            result = self.arm_controller.set_arm_angles(angles, velocity)
             
             if result:
                 # 执行成功

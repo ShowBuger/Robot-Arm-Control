@@ -902,15 +902,19 @@ class ActionManagerPage(QWidget):
         self.arm_control_mode = QComboBox()
         self.arm_control_mode.addItems([
             "笛卡尔直线",  # Cartesian Linear
-            "关节角度",    # Joint Angles
-            "笛卡尔偏移",  # Cartesian Offset
-            "速度控制"     # Velocity Control
+            "关节角度"     # Joint Angles
         ])
         self.arm_control_mode.currentTextChanged.connect(self.on_arm_control_mode_changed)
         mode_layout.addWidget(self.arm_control_mode)
         mode_layout.addStretch()
         arm_layout.addLayout(mode_layout)
         
+        # 创建笛卡尔控件容器
+        self.cartesian_controls_widget = QWidget()
+        cartesian_layout = QVBoxLayout(self.cartesian_controls_widget)
+        cartesian_layout.setContentsMargins(0, 0, 0, 0)
+        cartesian_layout.setSpacing(5)
+
         # 创建机械臂参数配置
         arm_params = [
             {"name": "X", "color": "#ff7f00", "min": -1000, "max": 1000, "default": 400.0, "suffix": " mm"},
@@ -920,11 +924,11 @@ class ActionManagerPage(QWidget):
             {"name": "Pitch", "color": "#bd93f9", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
             {"name": "Yaw", "color": "#ffb86c", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
         ]
-        
+
         # 存储控件引用
         self.arm_sliders = []
         self.arm_spinboxes = []
-        
+
         for i, param in enumerate(arm_params):
             # 创建每个参数的容器
             param_widget = QWidget()
@@ -978,9 +982,9 @@ class ActionManagerPage(QWidget):
             param_layout.addWidget(QLabel(f"{param['name']}:"), 0)
             param_layout.addWidget(slider, 1)
             param_layout.addWidget(spinbox, 0)
-            
-            arm_layout.addWidget(param_widget)
-            
+
+            cartesian_layout.addWidget(param_widget)
+
             # 保存引用
             self.arm_sliders.append(slider)
             self.arm_spinboxes.append(spinbox)
@@ -995,11 +999,11 @@ class ActionManagerPage(QWidget):
         
         # 机械臂控制按钮
         arm_buttons_layout = QHBoxLayout()
-        
+
         self.move_arm_btn = QPushButton("移动机械臂")
         self.move_arm_btn.clicked.connect(self.move_arm)
         arm_buttons_layout.addWidget(self.move_arm_btn)
-        
+
         # 获取当前姿态按钮
         self.get_current_pose_btn = QPushButton("获取当前姿态")
         self.get_current_pose_btn.setStyleSheet("""
@@ -1016,8 +1020,11 @@ class ActionManagerPage(QWidget):
         """)
         self.get_current_pose_btn.clicked.connect(self.get_current_pose)
         arm_buttons_layout.addWidget(self.get_current_pose_btn)
-        
-        arm_layout.addLayout(arm_buttons_layout)
+
+        cartesian_layout.addLayout(arm_buttons_layout)
+
+        # 将笛卡尔控件容器添加到主布局
+        arm_layout.addWidget(self.cartesian_controls_widget)
 
         self._controls_container_layout.addWidget(self.arm_group)
 
@@ -1041,15 +1048,14 @@ class ActionManagerPage(QWidget):
         self.joint_controls_widget = QWidget()
         joint_layout = QVBoxLayout(self.joint_controls_widget)
 
-        # 关节角度参数
+        # 关节角度参数 (6自由度机械臂)
         joint_params = [
             {"name": "关节1", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
             {"name": "关节2", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
             {"name": "关节3", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
             {"name": "关节4", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
             {"name": "关节5", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节6", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节7", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
+            {"name": "关节6", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
         ]
 
         self.joint_spinboxes = []
@@ -1360,21 +1366,17 @@ class ActionManagerPage(QWidget):
         elif mode == "笛卡尔直线":
             # 显示笛卡尔直线控制界面
             self._show_cartesian_linear_controls()
-        elif mode == "笛卡尔偏移":
-            # 显示笛卡尔偏移控制界面
-            self._show_cartesian_offset_controls()
-        elif mode == "速度控制":
-            # 显示速度控制界面
-            self._show_velocity_controls()
 
         # 强制更新布局
         self.arm_group.update()
 
     def _show_joint_angle_controls(self):
         """显示关节角度控制界面"""
-        # 显示关节角度控件，隐藏其他控件
+        # 显示关节角度控件，隐藏笛卡尔控件
         if hasattr(self, 'joint_controls_widget'):
             self.joint_controls_widget.show()
+        if hasattr(self, 'cartesian_controls_widget'):
+            self.cartesian_controls_widget.hide()
         if hasattr(self, 'offset_controls_widget'):
             self.offset_controls_widget.hide()
         if hasattr(self, 'velocity_controls_widget'):
@@ -1382,9 +1384,11 @@ class ActionManagerPage(QWidget):
 
     def _show_cartesian_linear_controls(self):
         """显示笛卡尔直线控制界面"""
-        # 隐藏所有额外控件，显示默认的笛卡尔控制界面
+        # 显示笛卡尔控件，隐藏关节角度控件
         if hasattr(self, 'joint_controls_widget'):
             self.joint_controls_widget.hide()
+        if hasattr(self, 'cartesian_controls_widget'):
+            self.cartesian_controls_widget.show()
         if hasattr(self, 'offset_controls_widget'):
             self.offset_controls_widget.hide()
         if hasattr(self, 'velocity_controls_widget'):
@@ -2772,32 +2776,38 @@ class ActionManagerPage(QWidget):
                 return
 
         try:
-            self.log_message("使用UI设置的值保存动作（不获取硬件状态）...")
-            
-            # 直接使用UI控件中的机械臂位置值
-            arm_position = [
-                self.arm_x.value(),
-                self.arm_y.value(),
-                self.arm_z.value(),
-                self.arm_roll.value(),
-                self.arm_pitch.value(),
-                self.arm_yaw.value()
-            ]
-            
+            self.log_message("使用关节角度保存动作...")
+
+            # 获取当前关节角度（如果在关节模式）或从硬件获取
+            arm_angles = None
+            if hasattr(self, 'joint_spinboxes') and self.joint_spinboxes:
+                # 从关节角度UI控件获取
+                arm_angles = [spinbox.value() for spinbox in self.joint_spinboxes]
+                self.log_message(f"从UI获取关节角度: {arm_angles}")
+            else:
+                # 从硬件获取当前关节角度
+                arm_angles = self.integrated_controller.get_arm_angles()
+                if arm_angles:
+                    self.log_message(f"从硬件获取关节角度: {arm_angles}")
+                else:
+                    self.log_message("无法获取关节角度")
+                    QMessageBox.warning(self, "错误", "无法获取机械臂关节角度")
+                    return
+
             # 直接使用UI中设置的手指角度值
             ui_hand_angles = [spin.value() for spin in self.hand_angles]
-            
-            self.log_message(f"UI机械臂位置: {arm_position}")
-            self.log_message(f"UI手指角度: {ui_hand_angles}")
-            
+
+            self.log_message(f"保存的关节角度: {arm_angles}")
+            self.log_message(f"保存的手指角度: {ui_hand_angles}")
+
             # 如果有动作管理器，保存到动作管理器
             if self.action_manager:
-                self.log_message("使用动作管理器保存动作（UI设置值模式）")
-                
+                self.log_message("使用动作管理器保存动作（关节角度模式）")
+
                 success = self.action_manager.save_current_pose_as_action(
                     name=name,
                     use_ui_values=True,
-                    ui_arm_position=arm_position,
+                    ui_arm_angles=arm_angles,  # 改为关节角度
                     ui_hand_angles=ui_hand_angles
                 )
 
@@ -2825,13 +2835,13 @@ class ActionManagerPage(QWidget):
                 import os
                 import time
                 
-                # 构建动作数据
+                # 构建动作数据（使用关节角度）
                 action_data = {
                     "name": name,
-                    "arm_position": arm_position,
+                    "arm_angles": arm_angles,  # 改为关节角度
                     "hand_angles": ui_hand_angles,
                     "timestamp": time.time(),
-                    "source": "UI设置值（未获取硬件状态）"
+                    "source": "关节角度控制"
                 }
                 
                 actions_dir = "saved_actions"
@@ -2933,7 +2943,7 @@ class ActionManagerPage(QWidget):
     def get_current_pose(self):
         """获取当前机械臂和机械手的姿态并更新UI显示"""
         self.log_message("开始获取当前设备姿态...")
-        
+
         # 检查连接状态
         if not hasattr(self.integrated_controller, 'arm_connected') or not self.integrated_controller.arm_connected:
             self.log_message("警告: 机械臂未连接")
@@ -2941,26 +2951,51 @@ class ActionManagerPage(QWidget):
             return
 
         try:
-            # 获取当前机械臂位置
-            self.log_message("正在获取机械臂位置...")
-            arm_position = self.integrated_controller.get_arm_position()
-            
-            if arm_position is None:
-                self.log_message("获取机械臂位置失败")
-                QMessageBox.warning(self, "错误", "无法获取当前机械臂位置")
-                return
-            
-            self.log_message(f"机械臂当前位置: {arm_position}")
-            
-            # 更新机械臂UI显示
-            if len(arm_position) >= 6:
-                self.arm_x.setValue(arm_position[0])
-                self.arm_y.setValue(arm_position[1])
-                self.arm_z.setValue(arm_position[2])
-                self.arm_roll.setValue(arm_position[3])
-                self.arm_pitch.setValue(arm_position[4])
-                self.arm_yaw.setValue(arm_position[5])
-                self.log_message("机械臂UI位置已更新")
+            # 获取当前运动模式
+            current_mode = self.arm_control_mode.currentText()
+            self.log_message(f"当前运动模式: {current_mode}")
+
+            # 根据运动模式获取相应的姿态信息
+            if current_mode == "关节角度":
+                # 获取关节角度
+                self.log_message("正在获取机械臂关节角度...")
+                arm_angles = self.integrated_controller.get_arm_angles()
+
+                if arm_angles is None:
+                    self.log_message("获取机械臂关节角度失败")
+                    QMessageBox.warning(self, "错误", "无法获取当前机械臂关节角度")
+                    return
+
+                self.log_message(f"机械臂当前关节角度: {arm_angles}")
+
+                # 更新关节角度UI显示
+                if len(arm_angles) >= len(self.joint_spinboxes):
+                    for i, angle in enumerate(arm_angles[:len(self.joint_spinboxes)]):
+                        self.joint_spinboxes[i].setValue(angle)
+                    self.log_message("机械臂关节角度UI已更新")
+
+            else:
+                # 笛卡尔模式（包括"笛卡尔直线"、"笛卡尔偏移"、"速度控制"）
+                # 获取当前机械臂位置
+                self.log_message("正在获取机械臂笛卡尔位置...")
+                arm_position = self.integrated_controller.get_arm_position()
+
+                if arm_position is None:
+                    self.log_message("获取机械臂位置失败")
+                    QMessageBox.warning(self, "错误", "无法获取当前机械臂位置")
+                    return
+
+                self.log_message(f"机械臂当前位置: {arm_position}")
+
+                # 更新机械臂笛卡尔坐标UI显示
+                if len(arm_position) >= 6:
+                    self.arm_x.setValue(arm_position[0])
+                    self.arm_y.setValue(arm_position[1])
+                    self.arm_z.setValue(arm_position[2])
+                    self.arm_roll.setValue(arm_position[3])
+                    self.arm_pitch.setValue(arm_position[4])
+                    self.arm_yaw.setValue(arm_position[5])
+                    self.log_message("机械臂笛卡尔位置UI已更新")
             
             # 获取当前机械手角度
             if hasattr(self.integrated_controller, 'hand_connected') and self.integrated_controller.hand_connected:

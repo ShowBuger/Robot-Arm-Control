@@ -291,7 +291,14 @@ class MainWindow(QMainWindow):
         UIFunctions.resize_grips(self)
 
     def closeEvent(self, event):
-        """窗口关闭事件，用于保存设置和关闭串口"""
+        """窗口关闭事件，用于保存设置和关闭所有连接"""
+        # 断开机械臂和机械手连接
+        if hasattr(self, 'arm_controller'):
+            try:
+                self.arm_controller.disconnect()
+            except Exception as e:
+                print(f"断开机械臂连接时出错: {e}")
+
         # 关闭串口连接
         if self.serial_manager.is_connected():
             self.serial_manager.disconnect()

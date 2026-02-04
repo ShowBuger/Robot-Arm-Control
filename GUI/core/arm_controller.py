@@ -309,6 +309,58 @@ class ArmController(QObject):
 
             return success
 
+    def disconnect_arm(self) -> bool:
+        """单独断开机械臂连接。"""
+        with self.lock:
+            if self.arm_connected and self.arm:
+                try:
+                    # 如果两个设备都连接，只断开臂时停止状态更新
+                    if self.arm_connected and self.hand_connected:
+                        self.stop_status_update()
+
+                    self.arm.rm_delete_robot_arm()
+                    self.arm = None
+                    self.arm_connected = False
+                    self.status_data["arm_connected"] = False
+                    self.arm_connected_signal.emit(False)
+                    self.logger.info("机械臂连接已断开")
+
+                    # 如果机械手也断开了，发射总连接信号
+                    if not self.hand_connected:
+                        self.connected_signal.emit(False)
+
+                    return True
+                except Exception as e:
+                    self.logger.error(f"断开机械臂连接失败: {e}")
+                    return False
+            return True
+
+    def disconnect_hand(self) -> bool:
+        """单独断开机械手连接。"""
+        with self.lock:
+            if self.hand_connected and self.hand:
+                try:
+                    # 如果两个设备都连接，只断开手时停止状态更新
+                    if self.arm_connected and self.hand_connected:
+                        self.stop_status_update()
+
+                    self.hand.disconnect()
+                    self.hand = None
+                    self.hand_connected = False
+                    self.status_data["hand_connected"] = False
+                    self.hand_connected_signal.emit(False)
+                    self.logger.info("机械手连接已断开")
+
+                    # 如果机械臂也断开了，发射总连接信号
+                    if not self.arm_connected:
+                        self.connected_signal.emit(False)
+
+                    return True
+                except Exception as e:
+                    self.logger.error(f"断开机械手连接失败: {e}")
+                    return False
+            return True
+
     def move_arm_to_position(self, position: List[float], speed: int = 30, wait: bool = False, relative: bool = False) -> bool:
         """
         移动机械臂到指定位置（笛卡尔空间）。
@@ -430,24 +482,58 @@ class ArmController(QObject):
             # 使用瑞尔曼API获取当前状态
             ret, state = self.arm.rm_get_current_arm_state()
 
+            # 添加调试日志
+            self.logger.debug(f"rm_get_current_arm_state返回: ret={ret}")
+            self.logger.debug(f"state完整内容: {state}")
+            self.logger.debug(f"state类型: {type(state)}")
+
             if ret == 0 and state:
-                # state字典包含当前位姿信息
-                pose = state.get("Pose", {})
-                position = [
-                    pose.get("position", {}).get("x", 0),
-                    pose.get("position", {}).get("y", 0),
-                    pose.get("position", {}).get("z", 0),
-                    pose.get("euler", {}).get("rx", 0),
-                    pose.get("euler", {}).get("ry", 0),
-                    pose.get("euler", {}).get("rz", 0)
-                ]
-                return position
+                # 检查state的实际键
+                self.logger.debug(f"state的keys: {state.keys() if isinstance(state, dict) else 'Not a dict'}")
+
+                # 尝试多种可能的键名
+                pose = None
+                if isinstance(state, dict):
+                    # 尝试不同的键名（区分大小写）
+                    pose = state.get("Pose") or state.get("pose") or state.get("Arm_Pose")
+                    if not pose:
+                        # 如果都没有，可能state本身就包含位置信息
+                        pose = state
+                    self.logger.debug(f"提取的pose: {pose}")
+
+                # 检查pose是否为列表（扁平结构）
+                if isinstance(pose, (list, tuple)) and len(pose) == 6:
+                    # SDK直接返回列表: [x, y, z, rx, ry, rz]
+                    self.logger.info(f"解析后的位置(列表格式): {pose}")
+                    return list(pose)
+                elif pose and isinstance(pose, dict):
+                    # 嵌套字典结构
+                    position_data = pose.get("position", {})
+                    euler_data = pose.get("euler", {})
+
+                    self.logger.debug(f"position_data: {position_data}")
+                    self.logger.debug(f"euler_data: {euler_data}")
+
+                    position = [
+                        position_data.get("x", 0),
+                        position_data.get("y", 0),
+                        position_data.get("z", 0),
+                        euler_data.get("rx", 0),
+                        euler_data.get("ry", 0),
+                        euler_data.get("rz", 0)
+                    ]
+
+                    self.logger.info(f"解析后的位置(字典格式): {position}")
+                    return position
+                else:
+                    self.logger.error(f"pose数据格式不正确: {pose}, 类型: {type(pose)}, 长度: {len(pose) if isinstance(pose, (list, tuple)) else 'N/A'}")
+                    return None
             else:
                 self.logger.error(f"获取机械臂位置失败, 错误码: {ret}")
                 return None
 
         except Exception as e:
-            self.logger.error(f"获取机械臂位置异常: {e}")
+            self.logger.error(f"获取机械臂位置异常: {e}", exc_info=True)
             return None
 
     def get_hand_angles(self) -> Optional[List[int]]:
@@ -609,14 +695,20 @@ class ArmController(QObject):
         try:
             ret, joint_angles = self.arm.rm_get_joint_degree()
 
+            # 添加调试日志
+            self.logger.debug(f"rm_get_joint_degree返回: ret={ret}")
+            self.logger.debug(f"joint_angles: {joint_angles}")
+            self.logger.debug(f"joint_angles类型: {type(joint_angles)}")
+
             if ret == 0 and joint_angles:
+                self.logger.info(f"获取到的关节角度: {joint_angles}")
                 return joint_angles
             else:
                 self.logger.error(f"获取机械臂角度失败, 错误码: {ret}")
                 return None
 
         except Exception as e:
-            self.logger.error(f"获取机械臂角度异常: {e}")
+            self.logger.error(f"获取机械臂角度异常: {e}", exc_info=True)
             return None
 
     def get_arm_pose(self) -> Optional[List[float]]:
@@ -684,6 +776,27 @@ class ArmController(QObject):
             return False
 
         try:
+            # 添加调试日志
+            self.logger.debug(f"set_arm_angles调用参数:")
+            self.logger.debug(f"  angles: {angles}")
+            self.logger.debug(f"  angles数量: {len(angles)}")
+            self.logger.debug(f"  speed: {speed}")
+            self.logger.debug(f"  wait: {wait}")
+
+            # 检查机械臂自由度
+            if hasattr(self.arm, 'arm_dof'):
+                arm_dof = self.arm.arm_dof
+                self.logger.debug(f"  机械臂自由度: {arm_dof}")
+
+                # 确保角度数量与自由度匹配
+                if len(angles) > arm_dof:
+                    self.logger.warning(f"角度数量({len(angles)})超过自由度({arm_dof})，将截取前{arm_dof}个")
+                    angles = angles[:arm_dof]
+                elif len(angles) < arm_dof:
+                    self.logger.error(f"角度数量({len(angles)})少于自由度({arm_dof})")
+                    self.error_signal.emit(f"角度数量不足: 需要{arm_dof}个，只提供了{len(angles)}个")
+                    return False
+
             # 瑞尔曼使用 rm_movej 进行关节空间运动
             result = self.arm.rm_movej(
                 joint=angles,
@@ -692,6 +805,8 @@ class ArmController(QObject):
                 connect=0,
                 block=1 if wait else 0
             )
+
+            self.logger.debug(f"rm_movej返回结果: {result}")
 
             if result == 0:
                 self.logger.info(f"机械臂角度设置成功: {angles}")
@@ -730,6 +845,14 @@ class ArmController(QObject):
             if len(position) != 6:
                 raise ValueError("位置参数必须包含6个值 [x, y, z, roll, pitch, yaw]")
 
+            # 添加调试日志
+            self.logger.debug(f"move_arm_cartesian_linear调用参数:")
+            self.logger.debug(f"  position: {position}")
+            self.logger.debug(f"  speed: {speed}")
+            self.logger.debug(f"  wait: {wait}")
+            self.logger.debug(f"  blend_radius: {blend_radius}")
+            self.logger.debug(f"  trajectory_connect: {trajectory_connect}")
+
             result = self.arm.rm_movel(
                 pose=position,
                 v=speed,
@@ -737,6 +860,8 @@ class ArmController(QObject):
                 connect=trajectory_connect,
                 block=1 if wait else 0
             )
+
+            self.logger.debug(f"rm_movel返回结果: {result}")
 
             if result == 0:
                 self.logger.info(f"笛卡尔直线运动成功: {position}")
