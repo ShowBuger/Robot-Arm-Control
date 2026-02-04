@@ -10,7 +10,7 @@ from PyQt6.QtWidgets import (
     QFormLayout, QDoubleSpinBox, QMessageBox, QMenu, QInputDialog,
     QSpinBox, QTextEdit, QGroupBox, QTableWidget, QTableWidgetItem,
     QHeaderView, QAbstractItemView, QCheckBox, QComboBox,
-    QFileDialog, QProgressBar, QSlider
+    QFileDialog, QProgressBar, QSlider, QAbstractSpinBox
 )
 
 from datetime import datetime
@@ -973,7 +973,8 @@ class ActionManagerPage(QWidget):
             spinbox.setSuffix(param["suffix"])
             spinbox.setKeyboardTracking(False)
             spinbox.setMinimumWidth(80)
-            
+            spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # 移除上下箭头
+
             # 连接信号
             slider.valueChanged.connect(lambda v, sb=spinbox: sb.setValue(v / 10.0))
             spinbox.valueChanged.connect(lambda v, sl=slider: sl.setValue(int(v * 10)))
@@ -1050,19 +1051,53 @@ class ActionManagerPage(QWidget):
 
         # 关节角度参数 (6自由度机械臂)
         joint_params = [
-            {"name": "关节1", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节2", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节3", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节4", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节5", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
-            {"name": "关节6", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
+            {"name": "关节1", "color": "#ff5555", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节2", "color": "#50fa7b", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节3", "color": "#8be9fd", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节4", "color": "#bd93f9", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节5", "color": "#ffb86c", "min": -180, "max": 180, "default": 0.0, "suffix": "°"},
+            {"name": "关节6", "color": "#ff79c6", "min": -180, "max": 180, "default": 0.0, "suffix": "°"}
         ]
 
         self.joint_spinboxes = []
-        for param in joint_params:
-            param_layout = QHBoxLayout()
-            param_layout.addWidget(QLabel(f"{param['name']}:"))
+        self.joint_sliders = []
 
+        for param in joint_params:
+            # 创建每个参数的容器
+            param_widget = QWidget()
+            param_layout = QHBoxLayout(param_widget)
+            param_layout.setContentsMargins(5, 2, 5, 2)
+
+            # 创建带颜色的滑块
+            slider = QSlider(Qt.Orientation.Horizontal)
+            slider.setRange(int(param["min"] * 10), int(param["max"] * 10))  # 乘以10支持小数
+            slider.setValue(int(param["default"] * 10))
+            slider.setMinimumWidth(200)
+
+            # 设置滑块样式
+            slider.setStyleSheet(f"""
+                QSlider::groove:horizontal {{
+                    border: 1px solid #999999;
+                    height: 8px;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                        stop:0 #B0B0B0, stop:1 {param["color"]});
+                    margin: 2px 0;
+                    border-radius: 4px;
+                }}
+                QSlider::handle:horizontal {{
+                    background: {param["color"]};
+                    border: 2px solid #ffffff;
+                    width: 18px;
+                    margin: -2px 0;
+                    border-radius: 9px;
+                }}
+                QSlider::handle:horizontal:hover {{
+                    background: {param["color"]};
+                    border: 2px solid {param["color"]};
+                }}
+            """)
+
+            # 创建数值输入框
             spinbox = QDoubleSpinBox()
             spinbox.setRange(param["min"], param["max"])
             spinbox.setValue(param["default"])
@@ -1070,10 +1105,23 @@ class ActionManagerPage(QWidget):
             spinbox.setSingleStep(1.0)
             spinbox.setSuffix(param["suffix"])
             spinbox.setKeyboardTracking(False)
-            param_layout.addWidget(spinbox)
-            self.joint_spinboxes.append(spinbox)
+            spinbox.setMinimumWidth(80)
+            spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # 移除上下箭头
 
-            joint_layout.addLayout(param_layout)
+            # 连接信号
+            slider.valueChanged.connect(lambda v, sb=spinbox: sb.setValue(v / 10.0))
+            spinbox.valueChanged.connect(lambda v, sl=slider: sl.setValue(int(v * 10)))
+
+            # 添加到布局
+            param_layout.addWidget(QLabel(f"{param['name']}:"), 0)
+            param_layout.addWidget(slider, 1)
+            param_layout.addWidget(spinbox, 0)
+
+            joint_layout.addWidget(param_widget)
+
+            # 保存引用
+            self.joint_sliders.append(slider)
+            self.joint_spinboxes.append(spinbox)
 
         # 控制按钮
         joint_buttons_layout = QHBoxLayout()
@@ -1115,6 +1163,7 @@ class ActionManagerPage(QWidget):
             spinbox.setSingleStep(1.0)
             spinbox.setSuffix(param["suffix"])
             spinbox.setKeyboardTracking(False)
+            spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # 移除上下箭头
             param_layout.addWidget(spinbox)
             self.offset_spinboxes.append(spinbox)
 
@@ -1165,6 +1214,7 @@ class ActionManagerPage(QWidget):
             spinbox.setSingleStep(0.01)
             spinbox.setSuffix(param["suffix"])
             spinbox.setKeyboardTracking(False)
+            spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # 移除上下箭头
             param_layout.addWidget(spinbox)
             self.velocity_spinboxes.append(spinbox)
 
@@ -1244,7 +1294,8 @@ class ActionManagerPage(QWidget):
             spinbox.setRange(param["min"], param["max"])
             spinbox.setValue(param["default"])
             spinbox.setMinimumWidth(80)
-            
+            spinbox.setButtonSymbols(QAbstractSpinBox.ButtonSymbols.NoButtons)  # 移除上下箭头
+
             # 连接信号
             slider.valueChanged.connect(lambda v, sb=spinbox: sb.setValue(v))
             spinbox.valueChanged.connect(lambda v, sl=slider: sl.setValue(v))
