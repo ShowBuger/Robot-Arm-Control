@@ -474,7 +474,12 @@ class ArmController(QObject):
                 return False
 
     def get_arm_position(self) -> Optional[List[float]]:
-        """获取机械臂当前位置（笛卡尔坐标）。"""
+        """
+        获取机械臂当前位置（笛卡尔坐标）。
+
+        Returns:
+            位置列表 [x, y, z, rx, ry, rz]，单位：米和弧度；失败返回None
+        """
         if not self.arm_connected or not self.arm:
             return None
 
@@ -482,54 +487,26 @@ class ArmController(QObject):
             # 使用瑞尔曼API获取当前状态
             ret, state = self.arm.rm_get_current_arm_state()
 
-            # 添加调试日志
-            self.logger.debug(f"rm_get_current_arm_state返回: ret={ret}")
-            self.logger.debug(f"state完整内容: {state}")
-            self.logger.debug(f"state类型: {type(state)}")
+            self.logger.debug(f"rm_get_current_arm_state返回: ret={ret}, state={state}")
 
-            if ret == 0 and state:
-                # 检查state的实际键
-                self.logger.debug(f"state的keys: {state.keys() if isinstance(state, dict) else 'Not a dict'}")
-
-                # 尝试多种可能的键名
-                pose = None
-                if isinstance(state, dict):
-                    # 尝试不同的键名（区分大小写）
-                    pose = state.get("Pose") or state.get("pose") or state.get("Arm_Pose")
-                    if not pose:
-                        # 如果都没有，可能state本身就包含位置信息
-                        pose = state
-                    self.logger.debug(f"提取的pose: {pose}")
-
-                # 检查pose是否为列表（扁平结构）
-                if isinstance(pose, (list, tuple)) and len(pose) == 6:
-                    # SDK直接返回列表: [x, y, z, rx, ry, rz]
-                    self.logger.info(f"解析后的位置(列表格式): {pose}")
-                    return list(pose)
-                elif pose and isinstance(pose, dict):
-                    # 嵌套字典结构
-                    position_data = pose.get("position", {})
-                    euler_data = pose.get("euler", {})
-
-                    self.logger.debug(f"position_data: {position_data}")
-                    self.logger.debug(f"euler_data: {euler_data}")
-
-                    position = [
-                        position_data.get("x", 0),
-                        position_data.get("y", 0),
-                        position_data.get("z", 0),
-                        euler_data.get("rx", 0),
-                        euler_data.get("ry", 0),
-                        euler_data.get("rz", 0)
-                    ]
-
-                    self.logger.info(f"解析后的位置(字典格式): {position}")
-                    return position
-                else:
-                    self.logger.error(f"pose数据格式不正确: {pose}, 类型: {type(pose)}, 长度: {len(pose) if isinstance(pose, (list, tuple)) else 'N/A'}")
-                    return None
-            else:
+            if ret != 0:
                 self.logger.error(f"获取机械臂位置失败, 错误码: {ret}")
+                return None
+
+            if not state or not isinstance(state, dict):
+                self.logger.error(f"返回的state格式不正确: {state}")
+                return None
+
+            # 根据瑞尔曼SDK文档，state字典中"pose"键包含[x,y,z,rx,ry,rz]列表
+            # 位置单位：米(m)，姿态单位：弧度(rad)
+            pose = state.get("pose")
+
+            if isinstance(pose, (list, tuple)) and len(pose) >= 6:
+                result = list(pose[:6])
+                self.logger.info(f"获取机械臂笛卡尔位置成功: {result}")
+                return result
+            else:
+                self.logger.error(f"pose数据格式不正确: {pose}, 类型: {type(pose)}")
                 return None
 
         except Exception as e:

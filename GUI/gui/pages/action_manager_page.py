@@ -18,6 +18,7 @@ from typing import List, Dict, Any, Optional
 import time
 import csv
 import os
+import math
 
 from core.action_manager import Action, ActionSequence
 from core.arm_controller import ArmController
@@ -64,31 +65,27 @@ class ActionDialog(QDialog):
         arm_group = QGroupBox("机械臂参数")
         arm_layout = QGridLayout(arm_group)
 
-        # 位置参数标签和输入框
-        position_labels = ["X (mm)", "Y (mm)", "Z (mm)", "Roll (°)", "Pitch (°)", "Yaw (°)"]
+        # 关节角度参数标签和输入框
+        joint_labels = ["关节1 (°)", "关节2 (°)", "关节3 (°)", "关节4 (°)", "关节5 (°)", "关节6 (°)"]
         self.arm_positions = []
-        
-        for i, label_text in enumerate(position_labels):
+
+        for i, label_text in enumerate(joint_labels):
             label = QLabel(label_text)
             spinbox = QDoubleSpinBox()
-            
-            # 设置不同参数的范围
-            if i < 3:  # X, Y, Z 位置
-                spinbox.setRange(-1000, 1000)
-                spinbox.setSuffix(" mm")
-            else:  # Roll, Pitch, Yaw 角度
-                spinbox.setRange(-180, 180)
-                spinbox.setSuffix("°")
-                
+
+            # 设置关节角度范围
+            spinbox.setRange(-180, 180)
+            spinbox.setSuffix("°")
+
             spinbox.setDecimals(1)
             spinbox.setSingleStep(1.0)
-            
+
             # 设置默认值
             if self.is_edit_mode:
                 spinbox.setValue(self.action.arm_position[i])
             else:
-                # 默认位置值
-                default_values = [400.0, 0.0, 300.0, 180.0, 0.0, 0.0]
+                # 默认关节角度值（零位）
+                default_values = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 spinbox.setValue(default_values[i])
                 
             arm_layout.addWidget(label, i, 0)
@@ -1592,7 +1589,7 @@ class ActionManagerPage(QWidget):
             self.actions_list.setItem(row, 2, QTableWidgetItem(modified_time))
 
             # 参数简要信息
-            params = f"位置: [X:{action.arm_position[0]:.1f}, Y:{action.arm_position[1]:.1f}, Z:{action.arm_position[2]:.1f}]  手爪: {len(action.hand_angles)}"
+            params = f"角度: [J1:{action.arm_position[0]:.1f}°, J2:{action.arm_position[1]:.1f}°, J3:{action.arm_position[2]:.1f}°]  手爪: {len(action.hand_angles)}"
             self.actions_list.setItem(row, 3, QTableWidgetItem(params))
 
     def refresh_sequences_list(self):
@@ -3039,14 +3036,15 @@ class ActionManagerPage(QWidget):
                 self.log_message(f"机械臂当前位置: {arm_position}")
 
                 # 更新机械臂笛卡尔坐标UI显示
+                # 单位转换：SDK返回的是米和弧度，UI需要毫米和度
                 if len(arm_position) >= 6:
-                    self.arm_x.setValue(arm_position[0])
-                    self.arm_y.setValue(arm_position[1])
-                    self.arm_z.setValue(arm_position[2])
-                    self.arm_roll.setValue(arm_position[3])
-                    self.arm_pitch.setValue(arm_position[4])
-                    self.arm_yaw.setValue(arm_position[5])
-                    self.log_message("机械臂笛卡尔位置UI已更新")
+                    self.arm_x.setValue(arm_position[0] * 1000.0)      # m -> mm
+                    self.arm_y.setValue(arm_position[1] * 1000.0)      # m -> mm
+                    self.arm_z.setValue(arm_position[2] * 1000.0)      # m -> mm
+                    self.arm_roll.setValue(arm_position[3] * 180.0 / math.pi)   # rad -> deg
+                    self.arm_pitch.setValue(arm_position[4] * 180.0 / math.pi)  # rad -> deg
+                    self.arm_yaw.setValue(arm_position[5] * 180.0 / math.pi)    # rad -> deg
+                    self.log_message("机械臂笛卡尔位置UI已更新（已转换单位：m->mm, rad->deg）")
             
             # 获取当前机械手角度
             if hasattr(self.integrated_controller, 'hand_connected') and self.integrated_controller.hand_connected:

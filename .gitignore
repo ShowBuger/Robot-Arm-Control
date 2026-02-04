@@ -162,17 +162,7 @@ GUI/libs/*.dll
 GUI/libs/*.so
 GUI/libs/*.dylib
 
-# ========================================
-# 文档和SDK（体积大，不应提交到git）
-# ========================================
-# 瑞尔曼SDK文档和库文件（如果很大的话）
-Document/瑞尔曼/RM_API2/**/*.dll
-Document/瑞尔曼/RM_API2/**/*.so
-Document/瑞尔曼/RM_API2/**/*.dylib
-Document/瑞尔曼/RM_API2/**/*.lib
-Document/瑞尔曼/RM_API2/**/*.pdb
-Document/瑞尔曼/RM_API2/**/*.ilk
-Document/瑞尔曼/RM_API2/.git/
+
 
 # 其他大型文档资源
 Document/**/*.pdf
