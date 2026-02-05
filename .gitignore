@@ -1,5 +1,11 @@
-# Claude Code settings
-.claude/settings.local.json
+# Claude/assistant related settings and caches (ignore anywhere)
+# 忽略任何子目录下的 .claude 相关文件/目录与常见缓存
+**/.claude
+**/.claude/**
+**/.claude*
+**/.claude*/**
+**/.cache
+**/.cache/**
 
 # ========================================
 # Python
@@ -162,13 +168,6 @@ GUI/libs/*.dll
 GUI/libs/*.so
 GUI/libs/*.dylib
 
-
-
-# 其他大型文档资源
-Document/**/*.pdf
-Document/**/*.zip
-Document/**/*.rar
-Document/**/*.7z
 
 # ========================================
 # 测试和调试
