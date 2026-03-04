@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QTime
+from PyQt6.QtCore import Qt, pyqtSlot, QTimer, QTime, QMetaObject
 from PyQt6.QtGui import QIcon, QColor, QFont
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
@@ -1401,6 +1401,27 @@ class ActionManagerPage(QWidget):
         # 序列列表选择变化
         self.sequences_list.itemSelectionChanged.connect(self.on_sequence_selection_changed)
 
+        # 集成控制器信号
+        if hasattr(self.integrated_controller, 'connected_signal'):
+            self.integrated_controller.connected_signal.connect(self.on_integrated_connected)
+        if hasattr(self.integrated_controller, 'error_signal'):
+            self.integrated_controller.error_signal.connect(self.on_integrated_error)
+
+        # 状态更新定时器
+        self.status_timer = QTimer(self)
+        self.status_timer.timeout.connect(self.update_integrated_status)
+        self.status_timer.start(3000)
+
+        # 手指角度变化信号
+        if hasattr(self, 'hand_angles') and self.hand_angles:
+            for i, spinbox in enumerate(self.hand_angles):
+                if i == 3 or i == 4:
+                    spinbox.valueChanged.connect(self.update_finger_display)
+
+        # 传感器数据更新信号
+        if self.sensor_data_manager:
+            self.sensor_data_manager.data_updated_signal.connect(self.on_sensor_data_updated)
+
     def on_arm_control_mode_changed(self, mode: str):
         """处理机械臂控制模式变化"""
         # 确保arm_group已经初始化
@@ -1540,27 +1561,6 @@ class ActionManagerPage(QWidget):
             self.stop_velocity_btn.setEnabled(False)
         else:
             QMessageBox.warning(self, "错误", "停止速度控制失败")
-        
-        # 添加集成控制器信号连接
-        if hasattr(self.integrated_controller, 'connected_signal'):
-            self.integrated_controller.connected_signal.connect(self.on_integrated_connected)
-        if hasattr(self.integrated_controller, 'error_signal'):
-            self.integrated_controller.error_signal.connect(self.on_integrated_error)
-        
-        # 状态更新定时器
-        self.status_timer = QTimer()
-        self.status_timer.timeout.connect(self.update_integrated_status)
-        self.status_timer.start(3000)  # 每3秒更新一次，减少性能压力
-        
-        # 连接手指角度变化信号以更新抓取控制显示
-        if hasattr(self, 'hand_angles') and self.hand_angles:
-            for i, spinbox in enumerate(self.hand_angles):
-                if i == 3 or i == 4:  # 只监听食指(3)和拇指(4)
-                    spinbox.valueChanged.connect(self.update_finger_display)
-        
-        # 连接传感器数据更新信号
-        if self.sensor_data_manager:
-            self.sensor_data_manager.data_updated_signal.connect(self.on_sensor_data_updated)
 
     def refresh_actions_list(self):
         """刷新动作列表"""
@@ -2564,30 +2564,42 @@ class ActionManagerPage(QWidget):
     def connect_arm(self):
         """连接瑞尔曼机械臂 - 使用ArmController"""
         ip = self.arm_ip_input.currentText()
+        self._pending_arm_ip = ip
         self.arm_connect_btn.setEnabled(False)
         self.log_message(f"正在连接瑞尔曼: {ip}...")
-        
+
         import threading
         def connect_thread():
+            success = False
+            error_msg = None
             try:
-                if self.integrated_controller.connect_arm(ip):
-                    self.log_message(f"瑞尔曼连接成功: {ip}")
-                    self.arm_status_label.setText(f"瑞尔曼: 已连接 ({ip})")
-                    # 更新按钮状态
-                    self.arm_connect_btn.setText("断开瑞尔曼")
-                    self.arm_connect_btn.clicked.disconnect()
-                    self.arm_connect_btn.clicked.connect(self.disconnect_arm)
-                else:
-                    self.log_message(f"瑞尔曼连接失败: {ip}")
-                    self.arm_status_label.setText("瑞尔曼: 连接失败")
+                success = self.integrated_controller.connect_arm(ip)
             except Exception as e:
-                self.log_message(f"瑞尔曼连接异常: {str(e)}")
-                self.arm_status_label.setText("瑞尔曼: 连接异常")
-            finally:
-                self.arm_connect_btn.setEnabled(True)
-        
+                error_msg = str(e)
+            self._arm_connect_result = (success, error_msg)
+            QMetaObject.invokeMethod(self, "_on_arm_connect_done",
+                                     Qt.ConnectionType.QueuedConnection)
+
         thread = threading.Thread(target=connect_thread, daemon=True)
         thread.start()
+
+    @pyqtSlot()
+    def _on_arm_connect_done(self):
+        """机械臂连接结果处理（主线程）"""
+        success, error_msg = self._arm_connect_result
+        self.arm_connect_btn.setEnabled(True)
+        if error_msg is not None:
+            self.log_message(f"瑞尔曼连接异常: {error_msg}")
+            self.arm_status_label.setText("瑞尔曼: 连接异常")
+        elif success:
+            self.log_message(f"瑞尔曼连接成功: {self._pending_arm_ip}")
+            self.arm_status_label.setText(f"瑞尔曼: 已连接 ({self._pending_arm_ip})")
+            self.arm_connect_btn.setText("断开瑞尔曼")
+            self.arm_connect_btn.clicked.disconnect()
+            self.arm_connect_btn.clicked.connect(self.disconnect_arm)
+        else:
+            self.log_message(f"瑞尔曼连接失败: {self._pending_arm_ip}")
+            self.arm_status_label.setText("瑞尔曼: 连接失败")
 
     def disconnect_arm(self):
         """断开瑞尔曼连接"""
@@ -2609,54 +2621,62 @@ class ActionManagerPage(QWidget):
         if not port:
             self.log_message("请先选择一个串口")
             return
-            
+
+        self._pending_hand_port = port
         self.hand_connect_btn.setEnabled(False)
         self.log_message(f"正在连接Inspire: {port}...")
-        
+
         import threading
         def connect_thread():
+            success = False
+            error_msg = None
             try:
-                # 首先检查串口是否存在
                 import os
                 if os.name == 'nt':  # Windows
                     import serial.tools.list_ports
-                    available_ports = [port.device for port in serial.tools.list_ports.comports()]
+                    available_ports = [p.device for p in serial.tools.list_ports.comports()]
                     if port not in available_ports:
-                        self.log_message(f"串口 {port} 不存在或已被占用")
-                        self.log_message("提示：请检查设备连接或尝试刷新串口列表")
+                        error_msg = f"串口 {port} 不存在或已被占用\n提示：请检查设备连接或尝试刷新串口列表"
+                        self._hand_connect_result = (False, error_msg)
+                        QMetaObject.invokeMethod(self, "_on_hand_connect_done",
+                                                 Qt.ConnectionType.QueuedConnection)
                         return
-                
-                if self.integrated_controller.connect_hand(port):
-                    self.log_message(f"Inspire连接成功: {port}")
-                    self.hand_status_label.setText(f"Inspire: 已连接 ({port})")
-                    self.hand_connect_btn.setText("断开Inspire")
-                    self.hand_connect_btn.clicked.disconnect()
-                    self.hand_connect_btn.clicked.connect(self.disconnect_hand)
-                else:
-                    self.log_message(f"Inspire连接失败: {port}")
-                    self.hand_status_label.setText("Inspire: 连接失败")
-                    self.log_message("提示：请检查串口号、波特率设置和设备连接")
-                    
+                success = self.integrated_controller.connect_hand(port)
             except Exception as e:
                 error_msg = str(e)
-                self.log_message(f"Inspire连接异常: {error_msg}")
-                self.hand_status_label.setText("Inspire: 连接异常")
-                
-                # 提供针对性的解决建议
-                if "Permission" in error_msg or "Access" in error_msg:
-                    self.log_message("建议：检查串口权限或关闭占用该串口的程序")
-                elif "FileNotFound" in error_msg or "cannot open port" in error_msg:
-                    self.log_message("建议：检查设备连接或尝试其他串口")
-                elif "timeout" in error_msg.lower():
-                    self.log_message("建议：检查设备是否正确启动或尝试重新插拔USB")
-                else:
-                    self.log_message("建议：检查设备连接和驱动程序")
-                    
-            finally:
-                self.hand_connect_btn.setEnabled(True)
-        
+            self._hand_connect_result = (success, error_msg)
+            QMetaObject.invokeMethod(self, "_on_hand_connect_done",
+                                     Qt.ConnectionType.QueuedConnection)
+
         thread = threading.Thread(target=connect_thread, daemon=True)
         thread.start()
+
+    @pyqtSlot()
+    def _on_hand_connect_done(self):
+        """机械手连接结果处理（主线程）"""
+        success, error_msg = self._hand_connect_result
+        self.hand_connect_btn.setEnabled(True)
+        if error_msg is not None:
+            self.log_message(f"Inspire连接异常: {error_msg}")
+            self.hand_status_label.setText("Inspire: 连接异常")
+            if "Permission" in error_msg or "Access" in error_msg:
+                self.log_message("建议：检查串口权限或关闭占用该串口的程序")
+            elif "FileNotFound" in error_msg or "cannot open port" in error_msg:
+                self.log_message("建议：检查设备连接或尝试其他串口")
+            elif "timeout" in error_msg.lower():
+                self.log_message("建议：检查设备是否正确启动或尝试重新插拔USB")
+            elif "不存在或已被占用" not in error_msg:
+                self.log_message("建议：检查设备连接和驱动程序")
+        elif success:
+            self.log_message(f"Inspire连接成功: {self._pending_hand_port}")
+            self.hand_status_label.setText(f"Inspire: 已连接 ({self._pending_hand_port})")
+            self.hand_connect_btn.setText("断开Inspire")
+            self.hand_connect_btn.clicked.disconnect()
+            self.hand_connect_btn.clicked.connect(self.disconnect_hand)
+        else:
+            self.log_message(f"Inspire连接失败: {self._pending_hand_port}")
+            self.hand_status_label.setText("Inspire: 连接失败")
+            self.log_message("提示：请检查串口号、波特率设置和设备连接")
 
     def disconnect_hand(self):
         """断开Inspire连接"""
@@ -2676,49 +2696,73 @@ class ActionManagerPage(QWidget):
         """连接所有设备 - 使用ArmController"""
         ip = self.arm_ip_input.currentText()
         port = self.get_selected_serial_port()
+        self._pending_connect_all = (ip, port)
         self.connect_all_btn.setEnabled(False)
         self.log_message("正在连接所有设备...")
-        
+
         import threading
         def connect_thread():
+            success = False
+            error_msg = None
             try:
-                if self.integrated_controller.connect_all(ip, port):
-                    self.log_message("设备连接完成")
-                    # 更新状态标签
-                    self.arm_status_label.setText(f"瑞尔曼: 已连接 ({ip})")
-                    self.hand_status_label.setText(f"Inspire: 已连接 ({port})")
-                else:
-                    self.log_message("设备连接失败")
+                success = self.integrated_controller.connect_all(ip, port)
             except Exception as e:
-                self.log_message(f"设备连接异常: {str(e)}")
-            finally:
-                self.connect_all_btn.setEnabled(True)
-        
+                error_msg = str(e)
+            self._connect_all_result = (success, error_msg)
+            QMetaObject.invokeMethod(self, "_on_connect_all_done",
+                                     Qt.ConnectionType.QueuedConnection)
+
         thread = threading.Thread(target=connect_thread, daemon=True)
         thread.start()
+
+    @pyqtSlot()
+    def _on_connect_all_done(self):
+        """所有设备连接结果处理（主线程）"""
+        success, error_msg = self._connect_all_result
+        ip, port = self._pending_connect_all
+        self.connect_all_btn.setEnabled(True)
+        if error_msg is not None:
+            self.log_message(f"设备连接异常: {error_msg}")
+        elif success:
+            self.log_message("设备连接完成")
+            self.arm_status_label.setText(f"瑞尔曼: 已连接 ({ip})")
+            self.hand_status_label.setText(f"Inspire: 已连接 ({port})")
+        else:
+            self.log_message("设备连接失败")
 
     def disconnect_all(self):
         """断开所有设备连接 - 使用ArmController"""
         self.disconnect_btn.setEnabled(False)
         self.log_message("正在断开所有连接...")
-        
+
         import threading
         def disconnect_thread():
+            success = False
+            error_msg = None
             try:
-                if self.integrated_controller.disconnect_all():
-                    self.log_message("所有设备已断开连接")
-                    # 更新状态标签
-                    self.arm_status_label.setText("瑞尔曼: 未连接")
-                    self.hand_status_label.setText("Inspire: 未连接")
-                else:
-                    self.log_message("断开连接时出现错误")
+                success = self.integrated_controller.disconnect_all()
             except Exception as e:
-                self.log_message(f"断开连接异常: {str(e)}")
-            finally:
-                self.disconnect_btn.setEnabled(True)
-        
+                error_msg = str(e)
+            self._disconnect_all_result = (success, error_msg)
+            QMetaObject.invokeMethod(self, "_on_disconnect_all_done",
+                                     Qt.ConnectionType.QueuedConnection)
+
         thread = threading.Thread(target=disconnect_thread, daemon=True)
         thread.start()
+
+    @pyqtSlot()
+    def _on_disconnect_all_done(self):
+        """断开所有连接结果处理（主线程）"""
+        success, error_msg = self._disconnect_all_result
+        self.disconnect_btn.setEnabled(True)
+        if error_msg is not None:
+            self.log_message(f"断开连接异常: {error_msg}")
+        elif success:
+            self.log_message("所有设备已断开连接")
+            self.arm_status_label.setText("瑞尔曼: 未连接")
+            self.hand_status_label.setText("Inspire: 未连接")
+        else:
+            self.log_message("断开连接时出现错误")
 
     def move_arm(self):
         """移动机械臂 - 根据控制模式调用相应方法"""

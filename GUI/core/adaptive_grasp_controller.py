@@ -178,8 +178,8 @@ class AdaptiveGraspController(QObject):
 
         # 获取当前手指角度
         try:
-            if hasattr(self.arm_controller, 'getHandAngles'):
-                hand_angles = self.arm_controller.getHandAngles()
+            if hasattr(self.arm_controller, 'get_hand_angles'):
+                hand_angles = self.arm_controller.get_hand_angles()
                 if isinstance(hand_angles, (list, tuple)) and len(hand_angles) >= 6:
                     self.current_hand_angles = list(hand_angles)
                     self.logger.info(f"当前手指角度: {self.current_hand_angles}")
@@ -187,7 +187,7 @@ class AdaptiveGraspController(QObject):
                     self.logger.warning(f"获取手指角度格式错误: {hand_angles}")
                     self.current_hand_angles = [500, 500, 500, 500, 500, 500]
             else:
-                self.logger.warning("机械臂控制器不支持getHandAngles方法")
+                self.logger.warning("机械臂控制器不支持get_hand_angles方法")
                 self.current_hand_angles = [500, 500, 500, 500, 500, 500]
         except Exception as e:
             self.logger.error(f"获取当前手指角度失败: {e}")
@@ -269,8 +269,17 @@ class AdaptiveGraspController(QObject):
                     exec_result = self.action_manager.execute_action(initial_action)
                     if exec_result:
                         self.logger.info(f"初始动作执行返回成功: {initial_action}")
-                        # 给动作一点时间稳定（动作管理器内部有延时）
-                        time.sleep(0.2)
+                        # 从动作对象获取目标手指角度，作为闭合起始位置
+                        try:
+                            action_obj = self.action_manager.get_action(initial_action)
+                            if action_obj and hasattr(action_obj, 'hand_angles') and action_obj.hand_angles:
+                                self.current_hand_angles = list(action_obj.hand_angles)
+                                self.status_signal.emit(f"起始手指角度已设为初始动作位置: {self.current_hand_angles}")
+                                self.logger.info(f"已设置闭合起始角度: {self.current_hand_angles}")
+                        except Exception as e:
+                            self.logger.warning(f"获取初始动作手指角度失败: {e}")
+                        # 等待手爪到达初始位置
+                        time.sleep(self.config.get("step_interval", 0.5))
                     else:
                         self.logger.warning(f"初始动作执行失败或返回False: {initial_action}")
                         self.status_signal.emit(f"初始动作执行失败: {initial_action}")
